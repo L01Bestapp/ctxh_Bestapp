@@ -9,7 +9,8 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.hcmut.volunteer"
     },
     "android": {
       "adaptiveIcon": {
@@ -19,7 +20,9 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.hcmut.volunteer",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "output": "static",
@@ -39,11 +42,18 @@
           }
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      "@react-native-google-signin/google-signin"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "3676cdf7-c5c2-4df7-a23e-2e6ab438b344"
+      }
     }
   }
 }

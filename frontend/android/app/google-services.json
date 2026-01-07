@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "903756698510",
+    "project_id": "uni-vonlunteer",
+    "storage_bucket": "uni-vonlunteer.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:903756698510:android:24538f4b4ad1120f4b4adf",
+        "android_client_info": {
+          "package_name": "com.hcmut.volunteer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCmeXH-WdnSo8VnO0tk6FgMPnBX4COYetc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

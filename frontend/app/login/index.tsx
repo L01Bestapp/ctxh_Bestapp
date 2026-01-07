@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import GoogleSignIn from '@/components/GoogleSignIn';
 
 export default function LoginScreen() {
     const router = useRouter();
@@ -87,11 +88,11 @@ export default function LoginScreen() {
                 <View style={styles.footer}>
                     <Text style={styles.orText}>- OR Continue with -</Text>
 
-                    <TouchableOpacity style={styles.googleButton}>
+                    <GoogleSignIn style={styles.googleButton}>
                         <View style={styles.googleIconContainer}>
                             <Ionicons name="logo-google" size={24} color="#EA4335" />
                         </View>
-                    </TouchableOpacity>
+                    </GoogleSignIn>
 
                     <View style={styles.signupContainer}>
                         <Text style={styles.signupText}>Create An Account </Text>
