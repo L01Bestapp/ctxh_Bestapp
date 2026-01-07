@@ -30,6 +30,9 @@ export default function RootLayout() {
         <Stack.Screen name="login/otp-verification" options={{ headerShown: false }} />
         <Stack.Screen name="login/reset-password" options={{ headerShown: false }} />
         <Stack.Screen name="get-started/index" options={{ headerShown: false }} />
+        <Stack.Screen name="create-activity" options={{ headerShown: false }} />
+        <Stack.Screen name="update-activity" options={{ headerShown: false }} />
+        <Stack.Screen name="handle-request" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
       <StatusBar style="auto" />

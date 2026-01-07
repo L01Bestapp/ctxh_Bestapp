@@ -1,10 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, TextInput, ScrollView, TouchableOpacity, FlatList } from 'react-native';
+import { View, Text, StyleSheet, Image, TextInput, ScrollView, TouchableOpacity, FlatList, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 
 // Mock Data for "My Activities" (Managed by Org)
-const MY_ACTIVITIES = [
+const INITIAL_ACTIVITIES = [
     {
         id: '1',
         title: 'Blood Donation Drive',
@@ -38,19 +39,23 @@ const MY_ACTIVITIES = [
 ];
 
 export default function OrgActivityScreen() {
+    const router = useRouter();
+    // Move activities to state to allow manipulation (delete)
+    const [activities, setActivities] = React.useState(INITIAL_ACTIVITIES);
+
     const [searchQuery, setSearchQuery] = React.useState('');
     const [statusFilter, setStatusFilter] = React.useState<'All' | 'Upcoming' | 'Ongoing' | 'Ended'>('All');
     const [sortOrder, setSortOrder] = React.useState<'newest' | 'oldest'>('newest');
     const [filterType, setFilterType] = React.useState<'All' | 'Volunteer' | 'Workshop'>('All');
     const [showFilterDropdown, setShowFilterDropdown] = React.useState(false);
 
-    // Counts (Dynamic)
-    const upcomingCount = MY_ACTIVITIES.filter(a => a.status === 'Upcoming').length;
-    const ongoingCount = MY_ACTIVITIES.filter(a => a.status === 'Ongoing').length;
-    const endedCount = MY_ACTIVITIES.filter(a => a.status === 'Ended').length;
+    // Counts (Dynamic based on current state)
+    const upcomingCount = activities.filter(a => a.status === 'Upcoming').length;
+    const ongoingCount = activities.filter(a => a.status === 'Ongoing').length;
+    const endedCount = activities.filter(a => a.status === 'Ended').length;
 
     const filteredActivities = React.useMemo(() => {
-        let result = MY_ACTIVITIES;
+        let result = activities;
 
         // 1. Filter by Search Query
         if (searchQuery) {
@@ -79,7 +84,7 @@ export default function OrgActivityScreen() {
         });
 
         return result;
-    }, [searchQuery, sortOrder, filterType, statusFilter]);
+    }, [activities, searchQuery, sortOrder, filterType, statusFilter]);
 
     const toggleSort = () => {
         setSortOrder(prev => prev === 'newest' ? 'oldest' : 'newest');
@@ -94,6 +99,25 @@ export default function OrgActivityScreen() {
         setStatusFilter(prev => prev === status ? 'All' : status);
     };
 
+    const confirmDelete = (id: string, title: string) => {
+        Alert.alert(
+            "Close Activity",
+            `Are you sure you want to close "${title}"? This action cannot be undone.`,
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Close Activity",
+                    style: "destructive",
+                    onPress: () => deleteActivity(id)
+                }
+            ]
+        );
+    };
+
+    const deleteActivity = (id: string) => {
+        setActivities(prev => prev.filter(item => item.id !== id));
+    };
+
     const renderActivityItem = ({ item }: { item: any }) => (
         <View style={styles.activityCard}>
             {/* Left Image Section */}
@@ -105,10 +129,28 @@ export default function OrgActivityScreen() {
             <View style={styles.contentContainer}>
                 {/* Management Actions */}
                 <View style={styles.topActionsRow}>
-                    <TouchableOpacity style={[styles.actionButton, { borderColor: '#2196F3' }]}>
+                    <TouchableOpacity
+                        style={[styles.actionButton, { borderColor: '#2196F3' }]}
+                        onPress={() => router.push({
+                            pathname: '/update-activity',
+                            params: {
+                                id: item.id,
+                                title: item.title,
+                                description: item.description,
+                                time: item.time,
+                                location: item.location,
+                                slots: item.slots,
+                                deadline: item.deadline,
+                                // Assuming we might pass image ID/URI later, simplified for now
+                            }
+                        })}
+                    >
                         <Text style={[styles.actionButtonText, { color: '#2196F3' }]}>Update Activity</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={[styles.actionButton, { borderColor: '#F44336' }]}>
+                    <TouchableOpacity
+                        style={[styles.actionButton, { borderColor: '#F44336' }]}
+                        onPress={() => confirmDelete(item.id, item.title)}
+                    >
                         <Text style={[styles.actionButtonText, { color: '#F44336' }]}>Close activity</Text>
                     </TouchableOpacity>
                 </View>
@@ -154,7 +196,16 @@ export default function OrgActivityScreen() {
                 {/* Footer: Slot & Handle Request */}
                 <View style={styles.cardFooter}>
                     <Text style={styles.slotText}>Slot: {item.slots}</Text>
-                    <TouchableOpacity style={styles.handleRequestButton}>
+                    <TouchableOpacity
+                        style={styles.handleRequestButton}
+                        onPress={() => router.push({
+                            pathname: '/handle-request',
+                            params: {
+                                activityId: item.id, title: item.title,
+                                slots: item.slots
+                            }
+                        })}
+                    >
                         <Text style={styles.handleRequestText}>Handle Request →</Text>
                     </TouchableOpacity>
                 </View>
@@ -267,7 +318,7 @@ export default function OrgActivityScreen() {
                 </View>
 
                 {/* Create New Activity Button */}
-                <TouchableOpacity style={styles.createActivityButton}>
+                <TouchableOpacity style={styles.createActivityButton} onPress={() => router.push('/create-activity')}>
                     <Text style={styles.createActivityText}>Create new activity</Text>
                     <Ionicons name="add-circle-outline" size={24} color="#fff" />
                 </TouchableOpacity>
