@@ -1,15 +1,23 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ImageBackground } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function GetStartedScreen() {
     const router = useRouter();
+    const params = useLocalSearchParams();
     const insets = useSafeAreaInsets();
 
     const handleGetStarted = () => {
-        router.replace('/(tabs)/home'); // Navigate to main app
+        const role = params.role;
+        if (role === 'org') {
+            // @ts-ignore
+            router.replace('/(tabs-org)/home');
+        } else {
+            // @ts-ignore
+            router.replace('/(tabs-student)/home');
+        }
     };
 
     return (

@@ -15,8 +15,10 @@ export default function LoginScreen() {
 
     const handleLogin = () => {
         // Logic to login
+        // Mock role detection logic
+        const role = username.toLowerCase().includes('org') ? 'org' : 'student';
         // @ts-ignore
-        router.replace('/get-started');
+        router.replace({ pathname: '/get-started', params: { role } });
     };
 
     const handleSignUp = () => {

@@ -19,7 +19,8 @@ export default function RootLayout() {
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack initialRouteName="index">
         <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs-student)" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs-org)" options={{ headerShown: false }} />
         <Stack.Screen name="onboarding/index" options={{ headerShown: false }} />
         <Stack.Screen name="signup/role-selection" options={{ headerShown: false }} />
         <Stack.Screen name="signup/student" options={{ headerShown: false }} />

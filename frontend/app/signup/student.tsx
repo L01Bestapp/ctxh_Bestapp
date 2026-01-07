@@ -20,9 +20,11 @@ export default function StudentSignUpScreen() {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-    const handleCreateAccount = () => {
-        // Logic to create account
-        router.replace('/(tabs)/home'); // Placeholder navigation
+    const handleRegister = () => {
+        // Validation logic here
+        // If valid -> Call API
+        // On success:
+        router.replace('/(tabs-student)/home'); // Placeholder navigation
     };
 
     const handleLogin = () => {
@@ -126,7 +128,7 @@ export default function StudentSignUpScreen() {
                 </Text>
 
                 {/* Create Account Button */}
-                <TouchableOpacity style={styles.createButton} onPress={handleCreateAccount}>
+                <TouchableOpacity style={styles.createButton} onPress={handleRegister}>
                     <Text style={styles.createButtonText}>Create Account</Text>
                 </TouchableOpacity>
 
