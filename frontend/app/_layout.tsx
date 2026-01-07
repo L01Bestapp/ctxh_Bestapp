@@ -21,7 +21,8 @@ export default function RootLayout() {
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <Stack initialRouteName="index">
           <Stack.Screen name="index" options={{ headerShown: false }} />
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="(tabs-student)" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs-org)" options={{ headerShown: false }} />
           <Stack.Screen name="onboarding/index" options={{ headerShown: false }} />
           <Stack.Screen name="signup/role-selection" options={{ headerShown: false }} />
           <Stack.Screen name="signup/student" options={{ headerShown: false }} />
@@ -31,6 +32,9 @@ export default function RootLayout() {
           <Stack.Screen name="login/otp-verification" options={{ headerShown: false }} />
           <Stack.Screen name="login/reset-password" options={{ headerShown: false }} />
           <Stack.Screen name="get-started/index" options={{ headerShown: false }} />
+        <Stack.Screen name="create-activity" options={{ headerShown: false }} />
+        <Stack.Screen name="update-activity" options={{ headerShown: false }} />
+        <Stack.Screen name="handle-request" options={{ headerShown: false }} />
           <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
         </Stack>
         <StatusBar style="auto" />

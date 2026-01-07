@@ -36,7 +36,7 @@ export default function OnboardingScreen() {
     const [currentStep, setCurrentStep] = React.useState(0);
 
     const handleSkip = () => {
-        router.replace('/(tabs)/home');
+        router.replace('/(tabs-student)/home');
     };
 
     const handleNext = () => {

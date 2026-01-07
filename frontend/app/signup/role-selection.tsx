@@ -15,12 +15,13 @@ export default function RoleSelectionScreen() {
 
     const handleContinue = () => {
         if (selectedRole === 'student') {
-            router.replace('/signup/student');
+            router.push('/signup/student');
         } else if (selectedRole === 'organizer') {
-            router.replace('/signup/organization');
+            // Navigate to organization signup
+            router.push('/signup/organization');
         } else {
-            // Default fallback
-            router.replace('/(tabs)/home');
+            // Fallback or alert
+            router.replace('/(tabs-student)/home');
         }
     };
 

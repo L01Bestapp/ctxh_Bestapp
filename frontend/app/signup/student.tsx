@@ -15,15 +15,19 @@ export default function StudentSignUpScreen() {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [fullName, setFullName] = useState('');
+    const [studentId, setStudentId] = useState('');
     const [phone, setPhone] = useState('');
 
     // Visibility toggles
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-    const handleCreateAccount = () => {
-        // Logic to create account
-        router.replace('/(tabs)/home'); // Placeholder navigation
+    const handleRegister = () => {
+        // Validation logic here
+        // If valid -> Call API
+        // On success:
+        console.log('Registering with MSSV:', studentId); // Placeholder
+        router.replace('/(tabs-student)/home');
     };
 
     const handleLogin = () => {
@@ -108,6 +112,19 @@ export default function StudentSignUpScreen() {
                     />
                 </View>
 
+                {/* Student ID */}
+                <View style={styles.inputContainer}>
+                    <Ionicons name="card-outline" size={20} color="#666" style={styles.inputIcon} />
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Student ID (MSSV)"
+                        placeholderTextColor="#999"
+                        value={studentId}
+                        onChangeText={setStudentId}
+                        keyboardType="numeric"
+                    />
+                </View>
+
                 {/* Phone Number */}
                 <View style={styles.inputContainer}>
                     <Ionicons name="call" size={20} color="#666" style={styles.inputIcon} />
@@ -127,7 +144,7 @@ export default function StudentSignUpScreen() {
                 </Text>
 
                 {/* Create Account Button */}
-                <TouchableOpacity style={styles.createButton} onPress={handleCreateAccount}>
+                <TouchableOpacity style={styles.createButton} onPress={handleRegister}>
                     <Text style={styles.createButtonText}>Create Account</Text>
                 </TouchableOpacity>
 
