@@ -21,6 +21,14 @@ export default function RootLayout() {
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="onboarding/index" options={{ headerShown: false }} />
+        <Stack.Screen name="signup/role-selection" options={{ headerShown: false }} />
+        <Stack.Screen name="signup/student" options={{ headerShown: false }} />
+        <Stack.Screen name="signup/organization" options={{ headerShown: false }} />
+        <Stack.Screen name="login/index" options={{ headerShown: false }} />
+        <Stack.Screen name="login/forgot-password" options={{ headerShown: false }} />
+        <Stack.Screen name="login/otp-verification" options={{ headerShown: false }} />
+        <Stack.Screen name="login/reset-password" options={{ headerShown: false }} />
+        <Stack.Screen name="get-started/index" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
       <StatusBar style="auto" />

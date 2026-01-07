@@ -43,7 +43,7 @@ export default function OnboardingScreen() {
         if (currentStep < onboardingSteps.length - 1) {
             setCurrentStep(currentStep + 1);
         } else {
-            router.replace('/(tabs)/home');
+            router.replace('/signup/role-selection');
         }
     };
 
