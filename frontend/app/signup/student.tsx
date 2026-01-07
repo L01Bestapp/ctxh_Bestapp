@@ -14,6 +14,7 @@ export default function StudentSignUpScreen() {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [fullName, setFullName] = useState('');
+    const [studentId, setStudentId] = useState('');
     const [phone, setPhone] = useState('');
 
     // Visibility toggles
@@ -24,7 +25,8 @@ export default function StudentSignUpScreen() {
         // Validation logic here
         // If valid -> Call API
         // On success:
-        router.replace('/(tabs-student)/home'); // Placeholder navigation
+        console.log('Registering with MSSV:', studentId); // Placeholder
+        router.replace('/(tabs-student)/home');
     };
 
     const handleLogin = () => {
@@ -106,6 +108,19 @@ export default function StudentSignUpScreen() {
                         placeholderTextColor="#999"
                         value={fullName}
                         onChangeText={setFullName}
+                    />
+                </View>
+
+                {/* Student ID */}
+                <View style={styles.inputContainer}>
+                    <Ionicons name="card-outline" size={20} color="#666" style={styles.inputIcon} />
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Student ID (MSSV)"
+                        placeholderTextColor="#999"
+                        value={studentId}
+                        onChangeText={setStudentId}
+                        keyboardType="numeric"
                     />
                 </View>
 
