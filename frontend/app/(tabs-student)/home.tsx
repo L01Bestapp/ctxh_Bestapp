@@ -270,11 +270,13 @@ export default function StudentHomeScreen() {
 
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.menuIcon}>
-            <Ionicons name="menu" size={28} color="#333" />
+          <TouchableOpacity style={styles.menuIcon} onPress={() => router.push('/notifications')}>
+            <Ionicons name="notifications-outline" size={28} color="#333" />
           </TouchableOpacity>
           <Image source={require('../../assets/images/logo_univolun.png')} style={styles.headerLogo} resizeMode="contain" />
-          <Image source={require('../../assets/images/student_image.png')} style={styles.avatar} />
+          <TouchableOpacity onPress={() => router.push('/(tabs-student)/profile')}>
+            <Image source={require('../../assets/images/student_image.png')} style={styles.avatar} />
+          </TouchableOpacity>
         </View>
 
         {/* Search Bar */}
@@ -460,7 +462,9 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   menuIcon: {
-    padding: 5,
+    padding: 8,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 50,
   },
   headerLogo: {
     width: 100,

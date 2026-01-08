@@ -152,7 +152,10 @@ export default function StudentSignUpScreen() {
                 <View style={styles.footer}>
                     <Text style={styles.orText}>- OR Continue with -</Text>
 
-                    <GoogleSignIn style={styles.googleButton}>
+                    <GoogleSignIn
+                        style={styles.googleButton}
+                        onPress={() => router.push('/signup/google-student-id')}
+                    >
                         <View style={styles.googleIconContainer}>
                             <Ionicons name="logo-google" size={24} color="#EA4335" />
                         </View>

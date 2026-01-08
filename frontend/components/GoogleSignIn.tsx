@@ -6,10 +6,15 @@ import { Ionicons } from '@expo/vector-icons';
 interface GoogleSignInProps {
   style?: ViewStyle;
   children?: React.ReactNode;
+  onPress?: () => void;
 }
 
-export default function GoogleSignIn({ style, children }: GoogleSignInProps) {
+export default function GoogleSignIn({ style, children, onPress }: GoogleSignInProps) {
   const signIn = async () => {
+    if (onPress) {
+      onPress();
+      return;
+    }
     Alert.alert(
       "Expo Go Warning",
       "Google Sign-In không khả dụng trên Expo Go do yêu cầu Native Module.\nVui lòng sử dụng tài khoản/mật khẩu bình thường hoặc dùng Development Build."

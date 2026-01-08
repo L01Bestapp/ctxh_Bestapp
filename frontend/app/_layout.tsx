@@ -26,6 +26,7 @@ export default function RootLayout() {
           <Stack.Screen name="onboarding/index" options={{ headerShown: false }} />
           <Stack.Screen name="signup/role-selection" options={{ headerShown: false }} />
           <Stack.Screen name="signup/student" options={{ headerShown: false }} />
+          <Stack.Screen name="signup/google-student-id" options={{ headerShown: false }} />
           <Stack.Screen name="signup/organization" options={{ headerShown: false }} />
           <Stack.Screen name="login/index" options={{ headerShown: false }} />
           <Stack.Screen name="login/forgot-password" options={{ headerShown: false }} />
@@ -42,6 +43,7 @@ export default function RootLayout() {
           <Stack.Screen name="send-feedback" options={{ headerShown: false }} />
           <Stack.Screen name="about-app" options={{ headerShown: false }} />
           <Stack.Screen name="student-profile-settings" options={{ headerShown: false }} />
+          <Stack.Screen name="notifications" options={{ headerShown: false }} />
           <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
         </Stack>
         <StatusBar style="auto" />
