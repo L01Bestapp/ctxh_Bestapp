@@ -41,6 +41,7 @@ export default function RootLayout() {
           <Stack.Screen name="notification-settings" options={{ headerShown: false }} />
           <Stack.Screen name="send-feedback" options={{ headerShown: false }} />
           <Stack.Screen name="about-app" options={{ headerShown: false }} />
+          <Stack.Screen name="student-profile-settings" options={{ headerShown: false }} />
           <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
         </Stack>
         <StatusBar style="auto" />

@@ -60,7 +60,16 @@
       ],
       "expo-web-browser",
       "@react-native-community/datetimepicker",
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow Uni Volunteer to skip to your photos.",
+          "savePhotosPermission": "Allow Uni Volunteer to save your QR code.",
+          "isAccessMediaLocationEnabled": true
+        }
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true,
