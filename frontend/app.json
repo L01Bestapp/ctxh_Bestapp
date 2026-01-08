@@ -9,7 +9,12 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.hcmut.volunteer",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Uni Volunteer uses the camera to scan QR codes.",
+        "NSMicrophoneUsageDescription": "Uni Volunteer needs microphone access for camera functionality."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -19,7 +24,13 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.hcmut.volunteer",
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO"
+      ]
     },
     "web": {
       "output": "static",
@@ -39,12 +50,27 @@
           }
         }
       ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Uni Volunteer to access your camera",
+          "microphonePermission": "Allow Uni Volunteer to access your microphone",
+          "recordAudioAndroid": true
+        }
+      ],
       "expo-web-browser",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "@react-native-google-signin/google-signin"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "3676cdf7-c5c2-4df7-a23e-2e6ab438b344"
+      }
     }
   }
 }

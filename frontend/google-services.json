@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "903756698510",
+    "project_id": "uni-vonlunteer",
+    "storage_bucket": "uni-vonlunteer.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:903756698510:android:24538f4b4ad1120f4b4adf",
+        "android_client_info": {
+          "package_name": "com.hcmut.volunteer"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "903756698510-rpgh0qs0rdmo2gnvq3a7um4b4e04l952.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.hcmut.volunteer",
+            "certificate_hash": "69247c35cea7cfca3180b01c36bd5765dad591c5"
+          }
+        },
+        {
+          "client_id": "903756698510-mm4je49oscmnkjm246t207bg0skuveom.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCmeXH-WdnSo8VnO0tk6FgMPnBX4COYetc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "903756698510-mm4je49oscmnkjm246t207bg0skuveom.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "903756698510-5vfkfl0eq4ekuo95dg6juqqeij8u7ke1.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.hcmut.volunteer"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
