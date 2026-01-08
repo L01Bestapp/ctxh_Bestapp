@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image, TextInput, ScrollView, TouchableOpacity, FlatList, ImageBackground } from 'react-native';
+import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -113,6 +114,7 @@ const ACTIVITIES = [
 ];
 
 export default function OrgHomeScreen() {
+    const router = useRouter();
     const [searchQuery, setSearchQuery] = React.useState('');
     const [sortOrder, setSortOrder] = React.useState<'newest' | 'oldest'>('newest');
     const [filterType, setFilterType] = React.useState<'All' | 'Volunteer' | 'Workshop'>('All');
@@ -242,7 +244,19 @@ export default function OrgHomeScreen() {
                         <Ionicons name="people-outline" size={14} color="#555" />
                         <Text style={styles.slotText}>{item.slots}</Text>
                     </View>
-                    <TouchableOpacity style={styles.viewDetailsButton}>
+                    <TouchableOpacity style={styles.viewDetailsButton} onPress={() => router.push({
+                        pathname: '/activity-detail',
+                        params: {
+                            title: item.title,
+                            organizer: item.organizer,
+                            time: item.time,
+                            location: item.location,
+                            status: item.status,
+                            slots: item.slots,
+                            image: Image.resolveAssetSource(item.image).uri, // Pass URI string for params
+                            description: "Join us for this amazing activity! Be part of the community and make a difference." // Mock desc
+                        }
+                    })}>
                         <Text style={styles.viewDetailsText}>Detail</Text>
                     </TouchableOpacity>
                 </View>
