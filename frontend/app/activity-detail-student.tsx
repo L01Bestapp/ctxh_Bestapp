@@ -142,12 +142,22 @@ export default function StudentActivityDetailScreen() {
                 <View style={{ height: 100 }} />
             </ScrollView>
 
-            {/* Register Button Footer */}
+            {/* Footer Action */}
             <View style={styles.footerContainer}>
                 <View style={styles.divider} />
-                <TouchableOpacity style={styles.registerButton} onPress={handleRegister}>
-                    <Text style={styles.registerButtonText}>REGISTER</Text>
-                </TouchableOpacity>
+                {params.isRegistered === 'true' ? (
+                    <View style={styles.approvedContainer}>
+                        <MaterialCommunityIcons name="check-decagram" size={24} color="#4CAF50" />
+                        <View style={{ marginLeft: 10 }}>
+                            <Text style={styles.approvedTitle}>Registration Approved</Text>
+                            <Text style={styles.approvedDate}>Approved on {params.approvedAt || 'Oct 20, 2025'}</Text>
+                        </View>
+                    </View>
+                ) : (
+                    <TouchableOpacity style={styles.registerButton} onPress={handleRegister}>
+                        <Text style={styles.registerButtonText}>REGISTER</Text>
+                    </TouchableOpacity>
+                )}
             </View>
         </View>
     );
@@ -244,5 +254,24 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: 'bold',
         letterSpacing: 0.5,
+    },
+    approvedContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#E8F5E9',
+        paddingVertical: 12,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#A5D6A7'
+    },
+    approvedTitle: {
+        color: '#2E7D32',
+        fontSize: 16,
+        fontWeight: 'bold'
+    },
+    approvedDate: {
+        color: '#4CAF50',
+        fontSize: 12,
     }
 });
