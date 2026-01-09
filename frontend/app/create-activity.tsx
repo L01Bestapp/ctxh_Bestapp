@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, Image, KeyboardAvoidingView, Platform, Alert, LogBox, Modal } from 'react-native';
+import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, Image, KeyboardAvoidingView, Platform, Alert, LogBox, Modal, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from './context/AuthContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,7 +15,8 @@ export default function CreateActivityScreen() {
     useEffect(() => {
         LogBox.ignoreLogs([
             'ImagePicker.MediaTypeOptions have been deprecated',
-            'ImagePicker: MediaTypeOptions have been deprecated'
+            'ImagePicker: MediaTypeOptions have been deprecated',
+            'SafeAreaView has been deprecated'
         ]);
     }, []);
 
@@ -57,6 +58,7 @@ export default function CreateActivityScreen() {
         'OTHER'
     ];
     const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
 
     const pickImage = async () => {
         let result = await ImagePicker.launchImageLibraryAsync({
@@ -104,6 +106,8 @@ export default function CreateActivityScreen() {
             Alert.alert("Invalid Dates", "Registration deadline must be before the start date.");
             return;
         }
+
+        setIsLoading(true);
 
         try {
             const formData = new FormData();
@@ -154,7 +158,7 @@ export default function CreateActivityScreen() {
                 return;
             }
 
-            const apiURL = `https://marg-astonishing-matthias.ngrok-free.dev/api/v1/activities?organizationId=${orgId}`;
+            const apiURL = `https://marg-astonishing-matthias.ngrok-free.dev/api/v1/activities`;
             // console.log(">>> CALLING API URL:", apiURL);
 
             const response = await fetch(apiURL, {
@@ -171,7 +175,7 @@ export default function CreateActivityScreen() {
 
             if (json.success) {
                 Alert.alert("Success", "Activity created successfully!", [
-                    { text: "OK", onPress: () => router.back() }
+                    { text: "OK", onPress: () => router.replace('/(tabs-org)/activity') }
                 ]);
             } else {
                 // Handling specific error codes/messages
@@ -203,6 +207,8 @@ export default function CreateActivityScreen() {
         } catch (error) {
             console.error("Create Activity Error:", error);
             Alert.alert("Error", "An network error occurred while creating the activity.");
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -432,8 +438,16 @@ export default function CreateActivityScreen() {
                         />
                     </View>
 
-                    <TouchableOpacity style={styles.createButton} onPress={handleCreate}>
-                        <Text style={styles.createButtonText}>CREATE</Text>
+                    <TouchableOpacity
+                        style={[styles.createButton, { opacity: isLoading ? 0.7 : 1 }]}
+                        onPress={handleCreate}
+                        disabled={isLoading}
+                    >
+                        {isLoading ? (
+                            <ActivityIndicator color="#fff" />
+                        ) : (
+                            <Text style={styles.createButtonText}>CREATE</Text>
+                        )}
                     </TouchableOpacity>
 
                 </ScrollView>
@@ -634,21 +648,26 @@ const styles = StyleSheet.create({
     },
     createButton: {
         backgroundColor: '#FF4058',
-        paddingVertical: 16,
         borderRadius: 12,
+        height: 56,
+        justifyContent: 'center',
         alignItems: 'center',
-        marginTop: 10,
-        marginBottom: 50,
-        shadowColor: "#FF4058",
-        shadowOffset: { width: 0, height: 4 },
+        marginTop: 20,
+        marginBottom: 40,
+        shadowColor: '#FF4058',
+        shadowOffset: {
+            width: 0,
+            height: 4,
+        },
         shadowOpacity: 0.3,
         shadowRadius: 5,
-        elevation: 4,
+        elevation: 5,
     },
     createButtonText: {
         color: '#fff',
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: 'bold',
+        letterSpacing: 1,
     },
     modalContainer: {
         flex: 1,

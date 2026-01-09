@@ -12,7 +12,7 @@ interface User {
     // Add other fields from token if needed
 }
 
-interface AuthContextType {
+export interface AuthContextType {
     user: User | null;
     token: string | null;
     isLoading: boolean;
@@ -119,7 +119,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             }
 
             const decodedToken = parseJwt(newToken);
-            console.log("DEBUG: Login User Data:", decodedToken);
+            // console.log("DEBUG: Login User Data:", decodedToken);
 
             if (decodedToken) {
                 setToken(newToken);

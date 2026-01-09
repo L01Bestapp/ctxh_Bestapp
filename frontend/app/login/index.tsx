@@ -24,12 +24,16 @@ export default function LoginScreen() {
             return;
         }
 
-        // Email format check
+        // Email format check (bypass for admin)
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(username)) {
+        if (username.toLowerCase() !== 'admin' && !emailRegex.test(username)) {
             Alert.alert("Invalid Input", "Please enter a valid email address.");
             return;
         }
+
+        // ... existing code ...
+
+
 
         /*
         // Optional: Password length check (if you want to catch simple typos before sending)
@@ -100,7 +104,7 @@ export default function LoginScreen() {
                 } else if (role === 'STUDENT') {
                     router.replace('/(tabs-student)/home');
                 } else if (role === 'ADMIN') {
-                    Alert.alert("Admin", "Admin dashboard is under development.");
+                    router.replace('/admin/dashboard' as any);
                 } else {
                     // Fallback or unknown role
                     Alert.alert("Login Success", `Welcome! Role: ${role}`);
