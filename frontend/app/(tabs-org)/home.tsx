@@ -9,6 +9,7 @@ interface Activity {
     activityId: number;
     title: string;
     shortDescription: string;
+    imageUrl?: string; // Updated from schema
     category: string;
     theNumberOfCtxhDay: number;
     startDateTime: string;
@@ -19,12 +20,14 @@ interface Activity {
     remainingSlots: number;
     status: string;
     createdAt: string;
-    organizer: string; // Add if API returns it, otherwise handle explicitly
-    image?: string | null; // Added image field
+    organizer: string;
 }
+
+import { useAuth } from '../context/AuthContext';
 
 export default function OrgHomeScreen() {
     const router = useRouter();
+    const { token } = useAuth();
     const [searchQuery, setSearchQuery] = React.useState('');
     const [sortOrder, setSortOrder] = React.useState<'newest' | 'oldest'>('newest');
     const [filterType, setFilterType] = React.useState<'All' | 'EDUCATION_SUPPORT' | 'SOCIAL_SUPPORT' | 'COMMUNITY_SERVICE' | 'ENVIRONMENT' | 'HEALTH_CAMPAIGN' | 'EVENT_SUPPORT' | 'FUNDRAISING' | 'OTHER'>('All');
@@ -36,29 +39,39 @@ export default function OrgHomeScreen() {
     const [showFilterDropdown, setShowFilterDropdown] = React.useState(false);
 
     const [currentPage, setCurrentPage] = React.useState(1);
-    const ITEMS_PER_PAGE = 2; // Demo: 2 items per page
+    const ITEMS_PER_PAGE = 8; // Increased for better view
     const [statusFilter, setStatusFilter] = React.useState<'All' | 'Upcoming' | 'Ongoing' | 'Ended'>('All');
 
     // Fetch API
     React.useEffect(() => {
         const fetchActivities = async () => {
+            if (!token) return;
+
             try {
-                // Fetch activities for Organization ID 1 (Mock)
-                const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/activities?organizationId=1');
+                const url = 'https://marg-astonishing-matthias.ngrok-free.dev/api/v1/activities';
+                // console.log("ORG_HOME: Fetching activities from:", url);
+                const response = await fetch(url, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
                 const json = await response.json();
+                // console.log("ORG_HOME: API Response:", JSON.stringify(json, null, 2));
 
                 if (json.success && json.data) {
                     setActivities(json.data);
+                } else {
                 }
             } catch (error) {
-                console.error("Failed to fetch org activities:", error);
+                console.error("ORG_HOME: Failed to fetch activities:", error);
             } finally {
                 setLoading(false);
             }
         };
 
         fetchActivities();
-    }, []);
+    }, [token]);
 
     const filteredActivities = React.useMemo(() => {
         let result = activities;
@@ -150,7 +163,7 @@ export default function OrgHomeScreen() {
     ];
 
     const renderActivityItem = ({ item }: { item: Activity }) => {
-        const imageSource = item.image ? { uri: item.image } : DEFAULT_IMAGES[item.activityId % DEFAULT_IMAGES.length];
+        const imageSource = item.imageUrl ? { uri: item.imageUrl } : DEFAULT_IMAGES[item.activityId % DEFAULT_IMAGES.length];
 
         return (
             <View style={styles.activityCard}>

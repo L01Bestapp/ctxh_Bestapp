@@ -9,6 +9,7 @@ interface Activity {
   activityId: number;
   title: string;
   shortDescription: string;
+  imageUrl?: string; // Updated from schema
   category: string;
   theNumberOfCtxhDay: number;
   startDateTime: string;
@@ -19,11 +20,13 @@ interface Activity {
   remainingSlots: number;
   status: string;
   createdAt: string;
-  image?: string | null; // Added image field
 }
+
+import { useAuth } from '../context/AuthContext'; // Import useAuth
 
 export default function StudentHomeScreen() {
   const router = useRouter();
+  const { token } = useAuth(); // Get token
   const [searchQuery, setSearchQuery] = React.useState('');
   const [sortOrder, setSortOrder] = React.useState<'newest' | 'oldest'>('newest');
   const [filterType, setFilterType] = React.useState<'All' | 'EDUCATION_SUPPORT' | 'SOCIAL_SUPPORT' | 'COMMUNITY_SERVICE' | 'ENVIRONMENT' | 'HEALTH_CAMPAIGN' | 'EVENT_SUPPORT' | 'FUNDRAISING' | 'OTHER'>('All');
@@ -35,28 +38,43 @@ export default function StudentHomeScreen() {
   const [showFilterDropdown, setShowFilterDropdown] = React.useState(false);
 
   const [currentPage, setCurrentPage] = React.useState(1);
-  const ITEMS_PER_PAGE = 2; // Demo: 2 items per page
+  const ITEMS_PER_PAGE = 8; // Increased for better view
   const [statusFilter, setStatusFilter] = React.useState<'All' | 'Upcoming' | 'Ongoing' | 'Ended'>('All');
 
   // Fetch API
   React.useEffect(() => {
     const fetchActivities = async () => {
+      if (!token) {
+        return; // Wait for token
+      }
+
       try {
-        const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/activities/available');
+        const url = 'https://marg-astonishing-matthias.ngrok-free.dev/api/v1/activities';
+        // console.log("Fetching activities from:", url);
+        const response = await fetch(url, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
         const json = await response.json();
+        // console.log("Activity API Response:", JSON.stringify(json, null, 2));
 
         if (json.success && json.data) {
           setActivities(json.data);
+          // console.log("Set activities count:", json.data.length);
+        } else {
+          // console.log("API returned success=false or no data");
         }
       } catch (error) {
-        console.error("Failed to fetch available activities:", error);
+        console.error("Failed to fetch activities:", error);
       } finally {
         setLoading(false);
       }
     };
 
     fetchActivities();
-  }, []);
+  }, [token]);
 
   const filteredActivities = React.useMemo(() => {
     let result = activities;
@@ -149,7 +167,7 @@ export default function StudentHomeScreen() {
   ];
 
   const renderActivityItem = ({ item }: { item: Activity }) => {
-    const imageSource = item.image ? { uri: item.image } : DEFAULT_IMAGES[item.activityId % DEFAULT_IMAGES.length];
+    const imageSource = item.imageUrl ? { uri: item.imageUrl } : DEFAULT_IMAGES[item.activityId % DEFAULT_IMAGES.length];
 
     return (
       <View style={styles.activityCard}>
@@ -209,7 +227,7 @@ export default function StudentHomeScreen() {
                 status: item.status,
                 slots: `${item.remainingSlots}/${item.maxParticipants}`,
                 description: item.shortDescription,
-                image: Image.resolveAssetSource(imageSource).uri
+                image: item.imageUrl || Image.resolveAssetSource(DEFAULT_IMAGES[item.activityId % DEFAULT_IMAGES.length]).uri
               }
             })}>
               <Text style={styles.viewDetailsText}>Detail</Text>
