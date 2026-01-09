@@ -18,7 +18,8 @@ interface Activity {
     maxParticipants: number;
     approvedParticipants: number;
     remainingSlots: number;
-    status: string;
+    registrationState: string;
+    activityStatus: string;
     createdAt: string;
     organizer: string;
 }
@@ -40,7 +41,7 @@ export default function OrgHomeScreen() {
 
     const [currentPage, setCurrentPage] = React.useState(1);
     const ITEMS_PER_PAGE = 8; // Increased for better view
-    const [statusFilter, setStatusFilter] = React.useState<'All' | 'Upcoming' | 'Ongoing' | 'Ended'>('All');
+    const [statusFilter, setStatusFilter] = React.useState<'All' | 'UPCOMING' | 'ONGOING' | 'ENDED'>('All');
 
     // Fetch API
     React.useEffect(() => {
@@ -61,7 +62,6 @@ export default function OrgHomeScreen() {
 
                 if (json.success && json.data) {
                     setActivities(json.data);
-                } else {
                 }
             } catch (error) {
                 console.error("ORG_HOME: Failed to fetch activities:", error);
@@ -80,7 +80,7 @@ export default function OrgHomeScreen() {
         if (searchQuery) {
             const lowerQuery = searchQuery.toLowerCase();
             result = result.filter(item =>
-                item.title.toLowerCase().includes(lowerQuery)
+                (item.title || '').toLowerCase().includes(lowerQuery)
             );
         }
 
@@ -89,12 +89,9 @@ export default function OrgHomeScreen() {
             result = result.filter(item => item.category === filterType);
         }
 
-        // 3. Filter by Status
+        // 3. Filter by Status (activityStatus)
         if (statusFilter !== 'All') {
-            if (statusFilter === 'Upcoming') {
-                result = result.filter(item => item.status === 'OPEN');
-            }
-            // Add other status mappings if needed
+            result = result.filter(item => item.activityStatus === statusFilter);
         }
 
         // 4. Sort by Date Posted (createdAt)
@@ -112,12 +109,12 @@ export default function OrgHomeScreen() {
         setCurrentPage(1);
     }, [searchQuery, sortOrder, filterType, statusFilter]);
 
-    // Calculate Counts dynamically
-    const upcomingCount = activities.filter(a => a.status === 'OPEN').length;
-    const ongoingCount = 0;
-    const endedCount = 0;
+    // Calculate Counts using activityStatus
+    const upcomingCount = activities.filter(item => item.activityStatus === 'UPCOMING').length;
+    const ongoingCount = activities.filter(item => item.activityStatus === 'ONGOING').length;
+    const endedCount = activities.filter(item => item.activityStatus === 'ENDED').length;
 
-    const handleStatusClick = (status: 'Upcoming' | 'Ongoing' | 'Ended') => {
+    const handleStatusClick = (status: 'UPCOMING' | 'ONGOING' | 'ENDED') => {
         setStatusFilter(prev => prev === status ? 'All' : status);
     };
 
@@ -165,16 +162,33 @@ export default function OrgHomeScreen() {
     const renderActivityItem = ({ item }: { item: Activity }) => {
         const imageSource = item.imageUrl ? { uri: item.imageUrl } : DEFAULT_IMAGES[item.activityId % DEFAULT_IMAGES.length];
 
+        // Determine Color based on registrationState
+        let statusColor = '#616161';
+        let statusBg = '#EEEEEE';
+
+        const s = (item.registrationState || 'UNKNOWN').toUpperCase();
+        if (['OPEN', 'UPCOMING'].includes(s)) {
+            statusColor = '#009688';
+            statusBg = '#E0F2F1';
+        } else if (['ONGOING', 'ON_GOING'].includes(s)) {
+            statusColor = '#FF9800';
+            statusBg = '#FFF3E0';
+        } else if (['ENDED', 'CLOSED', 'COMPLETED'].includes(s)) {
+            statusColor = '#616161';
+            statusBg = '#EEEEEE';
+        } else if (s === 'FULL') {
+            statusColor = '#D32F2F';
+            statusBg = '#FFEBEE';
+        }
+
         return (
             <View style={styles.activityCard}>
                 <View>
                     <Image source={imageSource} style={styles.activityImage} resizeMode="cover" />
-                    <View style={[styles.statusContainerAbsolute,
-                    item.status === 'OPEN' ? { backgroundColor: '#E8F5E9' } : { backgroundColor: '#FFEBEE' }
-                    ]}>
-                        <Text style={[styles.statusTextAbsolute,
-                        item.status === 'OPEN' ? { color: '#2E7D32' } : { color: '#C62828' }
-                        ]}>{item.status}</Text>
+                    <View style={[styles.statusContainerAbsolute, { backgroundColor: statusBg }]}>
+                        <Text style={[styles.statusTextAbsolute, { color: statusColor }]}>
+                            {item.registrationState}
+                        </Text>
                     </View>
                 </View>
 
@@ -210,7 +224,7 @@ export default function OrgHomeScreen() {
                     <View style={styles.cardFooter}>
                         <View style={styles.slotContainer}>
                             <Ionicons name="people-outline" size={14} color="#555" />
-                            <Text style={styles.slotText}>{item.remainingSlots}/{item.maxParticipants}</Text>
+                            <Text style={styles.slotText}>{item.approvedParticipants}/{item.maxParticipants}</Text>
                         </View>
                         <TouchableOpacity style={styles.viewDetailsButton} onPress={() => router.push({
                             pathname: '/(tabs-org)/activity', // Navigate to manage activity
@@ -305,36 +319,36 @@ export default function OrgHomeScreen() {
                 {/* Status Circles (Upcoming, Ongoing, Ended) */}
                 <View style={styles.statusContainer}>
                     <TouchableOpacity
-                        style={[styles.statusItem, { opacity: (statusFilter === 'All' || statusFilter === 'Upcoming') ? 1 : 0.3 }]}
-                        onPress={() => handleStatusClick('Upcoming')}
+                        style={[styles.statusItem, { opacity: (statusFilter === 'All' || statusFilter === 'UPCOMING') ? 1 : 0.3 }]}
+                        onPress={() => handleStatusClick('UPCOMING')}
                     >
-                        <View style={[styles.circle, { borderColor: '#009688', backgroundColor: statusFilter === 'Upcoming' ? '#E0F2F1' : '#333' }]}>
-                            <Text style={[styles.statusCount, statusFilter === 'Upcoming' && { color: '#009688' }]}>{upcomingCount}</Text>
-                            <Text style={[styles.statusLabelSmall, statusFilter === 'Upcoming' && { color: '#009688' }]}>Events</Text>
+                        <View style={[styles.circle, { borderColor: '#009688', backgroundColor: statusFilter === 'UPCOMING' ? '#E0F2F1' : '#333' }]}>
+                            <Text style={[styles.statusCount, statusFilter === 'UPCOMING' && { color: '#009688' }]}>{upcomingCount}</Text>
+                            <Text style={[styles.statusLabelSmall, statusFilter === 'UPCOMING' && { color: '#009688' }]}>Events</Text>
                         </View>
-                        <Text style={[styles.statusLabel, statusFilter === 'Upcoming' && { color: '#009688' }]}>UPCOMING</Text>
+                        <Text style={[styles.statusLabel, statusFilter === 'UPCOMING' && { color: '#009688' }]}>UPCOMING</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                        style={[styles.statusItem, { opacity: (statusFilter === 'All' || statusFilter === 'Ongoing') ? 1 : 0.3 }]}
-                        onPress={() => handleStatusClick('Ongoing')}
+                        style={[styles.statusItem, { opacity: (statusFilter === 'All' || statusFilter === 'ONGOING') ? 1 : 0.3 }]}
+                        onPress={() => handleStatusClick('ONGOING')}
                     >
-                        <View style={[styles.circle, { borderColor: '#FF9800', backgroundColor: statusFilter === 'Ongoing' ? '#FFF3E0' : '#333' }]}>
-                            <Text style={[styles.statusCount, statusFilter === 'Ongoing' && { color: '#FF9800' }]}>{ongoingCount}</Text>
-                            <Text style={[styles.statusLabelSmall, statusFilter === 'Ongoing' && { color: '#FF9800' }]}>Events</Text>
+                        <View style={[styles.circle, { borderColor: '#FF9800', backgroundColor: statusFilter === 'ONGOING' ? '#FFF3E0' : '#333' }]}>
+                            <Text style={[styles.statusCount, statusFilter === 'ONGOING' && { color: '#FF9800' }]}>{ongoingCount}</Text>
+                            <Text style={[styles.statusLabelSmall, statusFilter === 'ONGOING' && { color: '#FF9800' }]}>Events</Text>
                         </View>
-                        <Text style={[styles.statusLabel, statusFilter === 'Ongoing' && { color: '#FF9800' }]}>ONGOING</Text>
+                        <Text style={[styles.statusLabel, statusFilter === 'ONGOING' && { color: '#FF9800' }]}>ONGOING</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                        style={[styles.statusItem, { opacity: (statusFilter === 'All' || statusFilter === 'Ended') ? 1 : 0.3 }]}
-                        onPress={() => handleStatusClick('Ended')}
+                        style={[styles.statusItem, { opacity: (statusFilter === 'All' || statusFilter === 'ENDED') ? 1 : 0.3 }]}
+                        onPress={() => handleStatusClick('ENDED')}
                     >
-                        <View style={[styles.circle, { borderColor: '#4CAF50', backgroundColor: statusFilter === 'Ended' ? '#E8F5E9' : '#333' }]}>
-                            <Text style={[styles.statusCount, statusFilter === 'Ended' && { color: '#4CAF50' }]}>{endedCount}</Text>
-                            <Text style={[styles.statusLabelSmall, statusFilter === 'Ended' && { color: '#4CAF50' }]}>Events</Text>
+                        <View style={[styles.circle, { borderColor: '#4CAF50', backgroundColor: statusFilter === 'ENDED' ? '#E8F5E9' : '#333' }]}>
+                            <Text style={[styles.statusCount, statusFilter === 'ENDED' && { color: '#4CAF50' }]}>{endedCount}</Text>
+                            <Text style={[styles.statusLabelSmall, statusFilter === 'ENDED' && { color: '#4CAF50' }]}>Events</Text>
                         </View>
-                        <Text style={[styles.statusLabel, statusFilter === 'Ended' && { color: '#4CAF50' }]}>ENDED</Text>
+                        <Text style={[styles.statusLabel, statusFilter === 'ENDED' && { color: '#4CAF50' }]}>ENDED</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -348,7 +362,7 @@ export default function OrgHomeScreen() {
                     <View style={styles.bannerContent}>
                         <Text style={styles.bannerTitle}>{upcomingCount} ACTIVITIES</Text>
                         <Text style={styles.bannerSubtitle}>IS OPEN</Text>
-                        <TouchableOpacity style={styles.checkNowButton} onPress={() => setStatusFilter('Upcoming')}>
+                        <TouchableOpacity style={styles.checkNowButton} onPress={() => setStatusFilter('UPCOMING')}>
                             <Text style={styles.checkNowText}>CHECK NOW →</Text>
                         </TouchableOpacity>
                     </View>
