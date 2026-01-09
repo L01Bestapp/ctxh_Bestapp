@@ -4,120 +4,33 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-// Mock Data for Activities
-const ACTIVITIES = [
-  {
-    id: '1',
-    title: 'Blood Donation Drive',
-    organizer: 'Youth Union, Faculty of CS',
-    time: 'Oct 20, 2025 - 08:00 AM',
-    location: 'Hall B1, HCMUT',
-    status: 'Upcoming',
-    slots: '15/20',
-    image: require('../../assets/images/ob1.png'),
-    color: '#FFCDD2',
-    createdAt: '2025-09-01T10:00:00Z',
-    type: 'Volunteer'
-  },
-  {
-    id: '2',
-    title: 'Green Earth Cleanup',
-    organizer: 'BK GREEN CLUB',
-    time: 'Oct 26, 2025 - 08:00 AM',
-    location: 'B1 - 203, HCMUT',
-    status: 'Ongoing',
-    slots: '10/20',
-    image: require('../../assets/images/ob2.png'),
-    color: '#C8E6C9',
-    createdAt: '2025-09-15T08:30:00Z',
-    type: 'Volunteer'
-  },
-  {
-    id: '3',
-    title: 'Campus Green Day',
-    organizer: 'Youth Union - Faculty of Env',
-    time: 'Oct 20, 2025 - 07:30 AM',
-    location: 'B6 - 312, HCMUT',
-    status: 'Ended',
-    slots: '15/15',
-    image: require('../../assets/images/ob3.png'),
-    color: '#E1BEE7',
-    createdAt: '2025-08-20T14:20:00Z',
-    type: 'Workshop'
-  },
-  {
-    id: '4',
-    title: 'Workshop - Art for a Cause',
-    organizer: 'Fine Arts Club',
-    time: 'Oct 28, 2025 - 09:00 AM',
-    location: 'B1 - 410, HCMUT',
-    status: 'Upcoming',
-    slots: '5/30',
-    image: require('../../assets/images/student_image.png'),
-    color: '#FFECB3',
-    createdAt: '2025-10-01T09:00:00Z',
-    type: 'Workshop'
-  },
-  // Duplicates for Pagination Demo
-  {
-    id: '5',
-    title: 'Tech for Community',
-    organizer: 'Google DSC',
-    time: 'Nov 05, 2025 - 08:00 AM',
-    location: 'Hall A5, HCMUT',
-    status: 'Upcoming',
-    slots: '25/50',
-    image: require('../../assets/images/ob1.png'),
-    color: '#BBDEFB',
-    createdAt: '2025-10-05T10:00:00Z',
-    type: 'Volunteer'
-  },
-  {
-    id: '6',
-    title: 'Recycling Workshop',
-    organizer: 'Green Future',
-    time: 'Nov 12, 2025 - 09:00 AM',
-    location: 'B4 - 101, HCMUT',
-    status: 'Upcoming',
-    slots: '10/30',
-    image: require('../../assets/images/ob2.png'),
-    color: '#C8E6C9',
-    createdAt: '2025-10-10T08:30:00Z',
-    type: 'Workshop'
-  },
-  {
-    id: '7',
-    title: 'Charity Run 2025',
-    organizer: 'Sports Club',
-    time: 'Nov 20, 2025 - 06:00 AM',
-    location: 'Stadium, HCMUT',
-    status: 'Upcoming',
-    slots: '100/200',
-    image: require('../../assets/images/ob3.png'),
-    color: '#FFCC80',
-    createdAt: '2025-10-15T14:20:00Z',
-    type: 'Volunteer'
-  },
-  {
-    id: '8',
-    title: 'Coding Bootcamp',
-    organizer: 'CSE Faculty',
-    time: 'Dec 01, 2025 - 08:00 AM',
-    location: 'Lab 1, HCMUT',
-    status: 'Upcoming',
-    slots: '40/40',
-    image: require('../../assets/images/student_image.png'),
-    color: '#E1BEE7',
-    createdAt: '2025-10-20T09:00:00Z',
-    type: 'Workshop'
-  }
-];
+// API Interface
+interface Activity {
+  activityId: number;
+  title: string;
+  shortDescription: string;
+  category: string;
+  theNumberOfCtxhDay: number;
+  startDateTime: string;
+  endDateTime: string;
+  address: string;
+  maxParticipants: number;
+  approvedParticipants: number;
+  remainingSlots: number;
+  status: string;
+  createdAt: string;
+  image?: string | null; // Added image field
+}
 
 export default function StudentHomeScreen() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = React.useState('');
   const [sortOrder, setSortOrder] = React.useState<'newest' | 'oldest'>('newest');
-  const [filterType, setFilterType] = React.useState<'All' | 'Volunteer' | 'Workshop'>('All');
+  const [filterType, setFilterType] = React.useState<'All' | 'EDUCATION_SUPPORT' | 'SOCIAL_SUPPORT' | 'COMMUNITY_SERVICE' | 'ENVIRONMENT' | 'HEALTH_CAMPAIGN' | 'EVENT_SUPPORT' | 'FUNDRAISING' | 'OTHER'>('All');
+
+  // API Data State
+  const [activities, setActivities] = React.useState<Activity[]>([]);
+  const [loading, setLoading] = React.useState(true);
 
   const [showFilterDropdown, setShowFilterDropdown] = React.useState(false);
 
@@ -125,26 +38,49 @@ export default function StudentHomeScreen() {
   const ITEMS_PER_PAGE = 2; // Demo: 2 items per page
   const [statusFilter, setStatusFilter] = React.useState<'All' | 'Upcoming' | 'Ongoing' | 'Ended'>('All');
 
+  // Fetch API
+  React.useEffect(() => {
+    const fetchActivities = async () => {
+      try {
+        const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/activities/available');
+        const json = await response.json();
+
+        if (json.success && json.data) {
+          setActivities(json.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch available activities:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchActivities();
+  }, []);
+
   const filteredActivities = React.useMemo(() => {
-    let result = ACTIVITIES;
+    let result = activities;
 
     // 1. Filter by Search Query
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
       result = result.filter(item =>
-        item.title.toLowerCase().includes(lowerQuery) ||
-        item.organizer.toLowerCase().includes(lowerQuery)
+        item.title.toLowerCase().includes(lowerQuery)
+        // item.organizer is not in API yet, skipping check
       );
     }
 
     // 2. Filter by Type
     if (filterType !== 'All') {
-      result = result.filter(item => item.type === filterType);
+      result = result.filter(item => item.category === filterType);
     }
 
     // 3. Filter by Status
     if (statusFilter !== 'All') {
-      result = result.filter(item => item.status === statusFilter);
+      if (statusFilter === 'Upcoming') {
+        result = result.filter(item => item.status === 'OPEN');
+      }
+      // Add other mappings if needed
     }
 
     // 4. Sort by Date Posted (createdAt)
@@ -155,7 +91,7 @@ export default function StudentHomeScreen() {
     });
 
     return result;
-  }, [searchQuery, sortOrder, filterType, statusFilter]);
+  }, [searchQuery, sortOrder, filterType, statusFilter, activities]);
 
   // Reset to page 1 when filters change
   React.useEffect(() => {
@@ -163,9 +99,9 @@ export default function StudentHomeScreen() {
   }, [searchQuery, sortOrder, filterType, statusFilter]);
 
   // Calculate Counts dynamically
-  const upcomingCount = ACTIVITIES.filter(a => a.status === 'Upcoming').length;
-  const ongoingCount = ACTIVITIES.filter(a => a.status === 'Ongoing').length;
-  const endedCount = ACTIVITIES.filter(a => a.status === 'Ended').length;
+  const upcomingCount = activities.filter(a => a.status === 'OPEN').length;
+  const ongoingCount = 0;
+  const endedCount = 0;
 
   const handleStatusClick = (status: 'Upcoming' | 'Ongoing' | 'Ended') => {
     setStatusFilter(prev => prev === status ? 'All' : status);
@@ -189,80 +125,100 @@ export default function StudentHomeScreen() {
     setSortOrder(prev => prev === 'newest' ? 'oldest' : 'newest');
   };
 
-  const selectFilter = (type: 'All' | 'Volunteer' | 'Workshop') => {
+  const selectFilter = (type: typeof filterType) => {
     setFilterType(type);
     setShowFilterDropdown(false);
   };
 
-  const renderActivityItem = ({ item }: { item: any }) => (
-    <View style={styles.activityCard}>
-      <View>
-        <Image source={item.image} style={styles.activityImage} resizeMode="cover" />
-        <View style={[styles.statusContainerAbsolute,
-        item.status === 'Upcoming' ? { backgroundColor: '#E8F5E9' } :
-          item.status === 'Ongoing' ? { backgroundColor: '#FFF3E0' } : { backgroundColor: '#FFEBEE' }
-        ]}>
-          <Text style={[styles.statusTextAbsolute,
-          item.status === 'Upcoming' ? { color: '#2E7D32' } :
-            item.status === 'Ongoing' ? { color: '#EF6C00' } : { color: '#C62828' }
-          ]}>{item.status}</Text>
+  const ACTIVITY_CATEGORIES = [
+    'All',
+    'EDUCATION_SUPPORT',
+    'SOCIAL_SUPPORT',
+    'COMMUNITY_SERVICE',
+    'ENVIRONMENT',
+    'HEALTH_CAMPAIGN',
+    'EVENT_SUPPORT',
+    'FUNDRAISING',
+    'OTHER'
+  ];
+
+  const DEFAULT_IMAGES = [
+    require('../../assets/images/ob1.png'),
+    require('../../assets/images/ob2.png'),
+    require('../../assets/images/ob3.png'),
+  ];
+
+  const renderActivityItem = ({ item }: { item: Activity }) => {
+    const imageSource = item.image ? { uri: item.image } : DEFAULT_IMAGES[item.activityId % DEFAULT_IMAGES.length];
+
+    return (
+      <View style={styles.activityCard}>
+        <View>
+          <Image source={imageSource} style={styles.activityImage} resizeMode="cover" />
+          <View style={[styles.statusContainerAbsolute,
+          item.status === 'OPEN' ? { backgroundColor: '#E8F5E9' } : { backgroundColor: '#FFEBEE' }
+          ]}>
+            <Text style={[styles.statusTextAbsolute,
+            item.status === 'OPEN' ? { color: '#2E7D32' } : { color: '#C62828' }
+            ]}>{item.status}</Text>
+          </View>
+        </View>
+
+        <View style={styles.cardContent}>
+          <Text style={styles.activityTitle} numberOfLines={1}>{item.title}</Text>
+
+          <View style={styles.organizerRow}>
+            <Ionicons name="person-circle-outline" size={14} color="#666" />
+            <Text style={styles.organizerText} numberOfLines={1}>Organization</Text>
+          </View>
+
+          {/* Details Section */}
+          <View style={{ marginBottom: 8 }}>
+            <View style={styles.detailRow}>
+              <Ionicons name="calendar-outline" size={12} color="#888" />
+              <Text style={styles.detailText}>{new Date(item.startDateTime).toLocaleDateString()}</Text>
+            </View>
+            <View style={styles.detailRow}>
+              <Ionicons name="location-outline" size={12} color="#888" />
+              <Text style={styles.detailText} numberOfLines={1}>{item.address}</Text>
+            </View>
+            <View style={styles.detailRow}>
+              <Ionicons name="ribbon-outline" size={12} color="#FF9800" />
+              <Text style={[styles.detailText, { color: '#FF9800', fontWeight: 'bold' }]}>
+                +{item.theNumberOfCtxhDay} days
+              </Text>
+            </View>
+          </View>
+
+          {/* Divider Line */}
+          <View style={styles.divider} />
+
+          <View style={styles.cardFooter}>
+            <View style={styles.slotContainer}>
+              <Ionicons name="people-outline" size={14} color="#555" />
+              <Text style={styles.slotText}>{item.remainingSlots}/{item.maxParticipants}</Text>
+            </View>
+            <TouchableOpacity style={styles.viewDetailsButton} onPress={() => router.push({
+              pathname: '/activity-detail-student',
+              params: {
+                id: item.activityId, // Pass ID
+                title: item.title,
+                // organizer: item.organizer, // Missing in API
+                time: item.startDateTime,
+                location: item.address,
+                status: item.status,
+                slots: `${item.remainingSlots}/${item.maxParticipants}`,
+                description: item.shortDescription,
+                image: Image.resolveAssetSource(imageSource).uri
+              }
+            })}>
+              <Text style={styles.viewDetailsText}>Detail</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
-
-      <View style={styles.cardContent}>
-        <Text style={styles.activityTitle} numberOfLines={1}>{item.title}</Text>
-
-        <View style={styles.organizerRow}>
-          <Ionicons name="person-circle-outline" size={14} color="#666" />
-          <Text style={styles.organizerText} numberOfLines={1}>{item.organizer}</Text>
-        </View>
-
-        {/* Details Section */}
-        <View style={{ marginBottom: 8 }}>
-          <View style={styles.detailRow}>
-            <Ionicons name="calendar-outline" size={12} color="#888" />
-            <Text style={styles.detailText}>{item.time.split('-')[0].trim()}</Text>
-          </View>
-          <View style={styles.detailRow}>
-            <Ionicons name="location-outline" size={12} color="#888" />
-            <Text style={styles.detailText} numberOfLines={1}>{item.location}</Text>
-          </View>
-          <View style={styles.detailRow}>
-            <Ionicons name="ribbon-outline" size={12} color="#FF9800" />
-            <Text style={[styles.detailText, { color: '#FF9800', fontWeight: 'bold' }]}>
-              +2 volunteer days
-            </Text>
-          </View>
-          <Text style={styles.deadlineText}>⚠️ Deadline: Oct 22</Text>
-        </View>
-
-        {/* Divider Line */}
-        <View style={styles.divider} />
-
-        <View style={styles.cardFooter}>
-          <View style={styles.slotContainer}>
-            <Ionicons name="people-outline" size={14} color="#555" />
-            <Text style={styles.slotText}>{item.slots}</Text>
-          </View>
-          <TouchableOpacity style={styles.viewDetailsButton} onPress={() => router.push({
-            pathname: '/activity-detail-student',
-            params: {
-              title: item.title,
-              organizer: item.organizer,
-              time: item.time,
-              location: item.location,
-              status: item.status,
-              slots: item.slots,
-              image: Image.resolveAssetSource(item.image).uri, // Pass URI string for params
-              description: "Join us for this amazing activity! Be part of the community and make a difference." // Mock desc
-            }
-          })}>
-            <Text style={styles.viewDetailsText}>Detail</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -320,15 +276,19 @@ export default function StudentHomeScreen() {
               {/* Dropdown Menu */}
               {showFilterDropdown && (
                 <View style={styles.dropdownMenu}>
-                  {['All', 'Volunteer', 'Workshop'].map((type) => (
-                    <TouchableOpacity
-                      key={type}
-                      style={[styles.dropdownItem, filterType === type && styles.dropdownItemActive]}
-                      onPress={() => selectFilter(type as any)}
-                    >
-                      <Text style={[styles.dropdownText, filterType === type && styles.dropdownTextActive]}>{type}</Text>
-                    </TouchableOpacity>
-                  ))}
+                  <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled>
+                    {ACTIVITY_CATEGORIES.map((type) => (
+                      <TouchableOpacity
+                        key={type}
+                        style={[styles.dropdownItem, filterType === type && styles.dropdownItemActive]}
+                        onPress={() => selectFilter(type as any)}
+                      >
+                        <Text style={[styles.dropdownText, filterType === type && styles.dropdownTextActive]}>
+                          {type.replace('_', ' ')}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
                 </View>
               )}
             </View>
@@ -379,9 +339,9 @@ export default function StudentHomeScreen() {
           imageStyle={{ borderRadius: 16 }}
         >
           <View style={styles.bannerContent}>
-            <Text style={styles.bannerTitle}>5 ACTIVITIES</Text>
-            <Text style={styles.bannerSubtitle}>IS ACTIVE</Text>
-            <TouchableOpacity style={styles.checkNowButton}>
+            <Text style={styles.bannerTitle}>{upcomingCount} ACTIVITIES</Text>
+            <Text style={styles.bannerSubtitle}>IS OPEN</Text>
+            <TouchableOpacity style={styles.checkNowButton} onPress={() => setStatusFilter('Upcoming')}>
               <Text style={styles.checkNowText}>CHECK NOW →</Text>
             </TouchableOpacity>
           </View>
@@ -392,10 +352,16 @@ export default function StudentHomeScreen() {
           <FlatList
             data={paginatedActivities}
             renderItem={renderActivityItem}
-            keyExtractor={item => item.id}
+            keyExtractor={item => item.activityId.toString()}
             numColumns={2}
             columnWrapperStyle={{ justifyContent: 'space-between' }}
             scrollEnabled={false}
+            ListEmptyComponent={() => (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="clipboard-outline" size={48} color="#ccc" />
+                <Text style={styles.emptyText}>No activities found</Text>
+              </View>
+            )}
           />
         </View>
 
@@ -758,4 +724,14 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
   },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+  },
+  emptyText: {
+    marginTop: 10,
+    color: '#888',
+    fontSize: 16,
+  }
 });

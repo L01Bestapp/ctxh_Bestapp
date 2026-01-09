@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Platform, KeyboardAvoidingView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Platform, KeyboardAvoidingView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,7 +11,7 @@ export default function StudentSignUpScreen() {
     const insets = useSafeAreaInsets();
 
     // State for form fields
-    const [username, setUsername] = useState('');
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [fullName, setFullName] = useState('');
@@ -22,12 +22,74 @@ export default function StudentSignUpScreen() {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-    const handleRegister = () => {
-        // Validation logic here
-        // If valid -> Call API
-        // On success:
-        console.log('Registering with MSSV:', studentId); // Placeholder
-        router.replace('/(tabs-student)/home');
+    const handleRegister = async () => {
+        // Validation
+        if (!email || !password || !confirmPassword || !fullName || !studentId || !phone) {
+            Alert.alert("Missing Information", "Please fill in all required fields.");
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            Alert.alert("Invalid Input", "Passwords do not match.");
+            return;
+        }
+
+        if (password.length < 8) {
+            Alert.alert("Invalid Input", "Password must be at least 8 characters long.");
+            return;
+        }
+
+        if (!email.toLowerCase().endsWith('@hcmut.edu.vn')) {
+            Alert.alert("Invalid Input", "Email must be a valid HCMUT email address (@hcmut.edu.vn).");
+            return;
+        }
+
+        if (fullName.trim().split(' ').length < 2) {
+            Alert.alert("Invalid Input", "Full name must contain at least two words.");
+            return;
+        }
+
+        try {
+            const payload = {
+                email: email,
+                password: password,
+                fullName: fullName,
+                mssv: studentId,
+                phoneNumber: phone
+            };
+
+            // console.log("DEBUG: Register Payload:", JSON.stringify(payload));
+
+            const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/students/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload),
+            });
+
+            const json = await response.json();
+            // console.log("DEBUG: Register Response:", JSON.stringify(json));
+
+            if (json.success) {
+                Alert.alert("Success", "Account created successfully! Please login.", [
+                    { text: "OK", onPress: () => router.replace('/login') }
+                ]);
+            } else {
+                // Extract detailed validation errors if available
+                let errorMessage = json.message || "Could not create account.";
+                if (json.data && typeof json.data === 'object') {
+                    const validationErrors = Object.values(json.data).join('\n');
+                    if (validationErrors) {
+                        errorMessage = validationErrors;
+                    }
+                }
+                Alert.alert("Registration Failed", errorMessage);
+            }
+        } catch (error) {
+            // console.error("Register Error:", error);
+            Alert.alert("Error", "An network error occurred. Please try again.");
+        }
     };
 
     const handleLogin = () => {
@@ -61,10 +123,10 @@ export default function StudentSignUpScreen() {
                     <Ionicons name="person" size={20} color="#666" style={styles.inputIcon} />
                     <TextInput
                         style={styles.input}
-                        placeholder="Username or Email"
+                        placeholder="Email"
                         placeholderTextColor="#999"
-                        value={username}
-                        onChangeText={setUsername}
+                        value={email}
+                        onChangeText={setEmail}
                     />
                 </View>
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Platform, KeyboardAvoidingView, Modal, FlatList } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Platform, KeyboardAvoidingView, Modal, FlatList, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,7 +11,7 @@ export default function OrganizationSignUpScreen() {
     const insets = useSafeAreaInsets();
 
     // State for form fields
-    const [username, setUsername] = useState('');
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [orgName, setOrgName] = useState('');
@@ -26,37 +26,123 @@ export default function OrganizationSignUpScreen() {
     const [dropdownVisible, setDropdownVisible] = useState(false);
 
     // Organization Types
+    // Organization Types
     const orgTypes = [
-        'University Department',
-        'Student Union',
-        'Club',
-        'NGO',
-        'Company',
-        'Government',
-        'Charity',
-        'Foundation',
-        'Community Group',
-        'Other'
+        { label: 'University Department', value: 'UNIVERSITY_DEPARTMENT' },
+        { label: 'Student Union', value: 'STUDENT_UNION' },
+        { label: 'Club', value: 'CLUB' },
+        { label: 'NGO', value: 'NGO' },
+        { label: 'Company', value: 'COMPANY' },
+        { label: 'Government', value: 'GOVERNMENT' },
+        { label: 'Charity', value: 'CHARITY' },
+        { label: 'Foundation', value: 'FOUNDATION' },
+        { label: 'Community Group', value: 'COMMUNITY_GROUP' },
+        { label: 'Other', value: 'OTHER' }
     ];
 
-    const handleCreateAccount = () => {
-        // Logic to create account
-        router.replace('/(tabs)/home'); // Placeholder navigation
+    const handleCreateAccount = async () => {
+        // Validation
+        if (!email || !password || !confirmPassword || !orgName || !phone || !orgType) {
+            Alert.alert("Missing Information", "Please fill in all required fields.");
+            return;
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            Alert.alert("Invalid Input", "Please enter a valid email address.");
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            Alert.alert("Invalid Input", "Passwords do not match.");
+            return;
+        }
+
+        if (password.length < 8) {
+            Alert.alert("Invalid Input", "Password must be at least 8 characters long.");
+            return;
+        }
+
+        try {
+            const payload = {
+                email: email,
+                password: password,
+                organizationName: orgName,
+                organizationType: orgType,
+                phoneNumber: phone
+            };
+
+            // console.log("DEBUG: Org Register Payload:", JSON.stringify(payload));
+
+            const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/organization/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload),
+            });
+
+            const json = await response.json();
+            // console.log("DEBUG: Org Register Response:", JSON.stringify(json));
+
+            if (json.success) {
+                // Log ID for manual activation
+                // Based on user response: field is 'organizationId'
+                const newOrgId = json.data?.organizationId;
+
+                // console.log(">>> REGISTRATION SUCCESS. JSON:", JSON.stringify(json));
+                // console.log(">>> Found ID:", newOrgId);
+
+                // Check if ID exists (including 0 if that's a valid ID in your system, though usually it's > 0)
+                if (newOrgId !== undefined && newOrgId !== null) {
+                    Alert.alert(
+                        "Success",
+                        `Account created! ID: ${newOrgId}\nPlease activate your account manually via API.`,
+                        [{ text: "OK", onPress: () => router.replace('/login') }]
+                    );
+                } else {
+                    // Debug mode: Show full structure if ID missing
+                    Alert.alert(
+                        "Success (No ID Found)",
+                        `Account created but could not find ID.\nResponse: ${JSON.stringify(json.data)}`,
+                        [{ text: "OK", onPress: () => router.replace('/login') }]
+                    );
+                }
+            } else {
+                // Extract detailed validation errors if available
+                let errorMessage = json.message || "Could not create account.";
+                if (json.data && typeof json.data === 'object') {
+                    // Map keys to friendly names and format
+                    const errors = Object.entries(json.data).map(([key, msg]) => {
+                        // Optional: Map key to friendly name (e.g. organizationName -> Organization Name)
+                        const fieldName = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                        return `• ${fieldName}: ${msg as string}`;
+                    });
+                    if (errors.length > 0) {
+                        errorMessage = errors.join('\n');
+                    }
+                }
+                Alert.alert("Registration Failed", errorMessage);
+            }
+        } catch (error) {
+            // console.error("Org Register Error:", error);
+            Alert.alert("Error", "An network error occurred. Please try again.");
+        }
     };
 
     const handleLogin = () => {
         router.replace('/login');
     };
 
-    const renderDropdownItem = ({ item }: { item: string }) => (
+    const renderDropdownItem = ({ item }: { item: { label: string, value: string } }) => (
         <TouchableOpacity
             style={styles.dropdownItem}
             onPress={() => {
-                setOrgType(item);
+                setOrgType(item.value);
                 setDropdownVisible(false);
             }}
         >
-            <Text style={styles.dropdownItemText}>{item}</Text>
+            <Text style={styles.dropdownItemText}>{item.label}</Text>
         </TouchableOpacity>
     );
 
@@ -87,10 +173,10 @@ export default function OrganizationSignUpScreen() {
                     <Ionicons name="person" size={20} color="#666" style={styles.inputIcon} />
                     <TextInput
                         style={styles.input}
-                        placeholder="Username or Email"
+                        placeholder="Email"
                         placeholderTextColor="#999"
-                        value={username}
-                        onChangeText={setUsername}
+                        value={email}
+                        onChangeText={setEmail}
                     />
                 </View>
 
@@ -159,7 +245,7 @@ export default function OrganizationSignUpScreen() {
                     <Ionicons name="people" size={20} color="#666" style={styles.inputIcon} />
                     <View style={{ flex: 1, justifyContent: 'center' }}>
                         <Text style={{ fontSize: 16, color: orgType ? '#333' : '#999' }}>
-                            {orgType || "Organization Type"}
+                            {orgType ? orgTypes.find(t => t.value === orgType)?.label : "Organization Type"}
                         </Text>
                     </View>
                     <Ionicons name="caret-down" size={20} color="#666" style={{ marginRight: 10 }} />
@@ -211,7 +297,7 @@ export default function OrganizationSignUpScreen() {
                         <FlatList
                             data={orgTypes}
                             renderItem={renderDropdownItem}
-                            keyExtractor={(item) => item}
+                            keyExtractor={(item) => item.value}
                         />
                     </View>
                 </TouchableOpacity>

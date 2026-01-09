@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Platform, KeyboardAvoidingView } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useAuth } from '../context/AuthContext';
+import { Alert } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,13 +15,106 @@ export default function LoginScreen() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const { login } = useAuth(); // Use Auth Context
 
-    const handleLogin = () => {
-        // Logic to login
-        // Mock role detection logic
-        const role = username.toLowerCase().includes('org') ? 'org' : 'student';
-        // @ts-ignore
-        router.replace({ pathname: '/get-started', params: { role } });
+    const handleLogin = async () => {
+        // Basic empty check
+        if (!username || !password) {
+            Alert.alert("Missing Information", "Please enter both Email and Password.");
+            return;
+        }
+
+        // Email format check
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(username)) {
+            Alert.alert("Invalid Input", "Please enter a valid email address.");
+            return;
+        }
+
+        /*
+        // Optional: Password length check (if you want to catch simple typos before sending)
+        if (password.length < 1) { 
+             Alert.alert("Invalid Input", "Password cannot be empty.");
+             return;
+        }
+        */
+
+        try {
+            const payload = {
+                email: username,
+                password: password
+            };
+
+            // console.log("DEBUG: Login Payload:", JSON.stringify(payload));
+
+            // Use generic auth endpoint
+            const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/auth/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload),
+            });
+
+            const json = await response.json();
+            // console.log("DEBUG: Login Response:", JSON.stringify(json));
+
+            if (json.success && json.data && json.data.accessToken) {
+                // Save token to context (decoded user data will be set there)
+                // Pass the ENTIRE data object (or relevant parts) as the second argument 'user'
+                // Pass the ENTIRE data object including EMAIL (username) to helper
+                // console.log(">>> LOGIN SUCCESS. User Data:", JSON.stringify(json.data));
+                await login(json.data.accessToken, { ...json.data, email: username });
+
+                // Assuming role is extracted in Context.
+                // For now, simple fallback navigation logic based on input if token doesn't have role
+                // But ideally we redirect based on user.role from context after login
+                // Since `login` is async and updates state, we might need to wait or rely on check.
+
+                // For immediate UX, let's infer simple redirect or check response role if available
+                // Use the returned role for navigation
+                const role = json.data.role; // "STUDENT" | "ORGANIZATION" | "ADMIN"
+
+                // Post-login check for account status
+                try {
+                    const checkResponse = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/students', {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${json.data.accessToken}`,
+                            'Content-Type': 'application/json',
+                        },
+                    });
+                    const checkJson = await checkResponse.json();
+
+                    if (checkJson.code === 1104 || (checkJson.message && checkJson.message.toLowerCase().includes("account has been disabled"))) {
+                        // console.log(">>> ACCOUNT DISABLED DETECTED. Redirecting to Verify Email.");
+                        router.replace('/verify-email');
+                        return; // Stop further navigation
+                    }
+                } catch (checkError) {
+                    console.error("Post-login status check failed:", checkError);
+                }
+
+                if (role === 'ORGANIZATION') {
+                    router.replace('/(tabs-org)/home');
+                } else if (role === 'STUDENT') {
+                    router.replace('/(tabs-student)/home');
+                } else if (role === 'ADMIN') {
+                    Alert.alert("Admin", "Admin dashboard is under development.");
+                } else {
+                    // Fallback or unknown role
+                    Alert.alert("Login Success", `Welcome! Role: ${role}`);
+                    router.replace('/(tabs-student)/home');
+                }
+
+            } else {
+                Alert.alert("Login Failed", json.message || "Invalid credentials.");
+            }
+
+        } catch (error) {
+            console.error("Login Error:", error);
+            Alert.alert("Error", "Network error. Please try again.");
+        }
     };
 
     const handleSignUp = () => {
@@ -50,10 +145,12 @@ export default function LoginScreen() {
                     <Ionicons name="person" size={20} color="#666" style={styles.inputIcon} />
                     <TextInput
                         style={styles.input}
-                        placeholder="Username or Email"
+                        placeholder="Email"
                         placeholderTextColor="#999"
                         value={username}
                         onChangeText={setUsername}
+                        autoCapitalize="none"
+                        keyboardType="email-address"
                     />
                 </View>
 
