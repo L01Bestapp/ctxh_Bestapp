@@ -12,7 +12,13 @@
       "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "903756698510-mm4je49oscmnkjm246t207bg0skuveom.apps.googleusercontent.com"
+      }
     }
   },
   "submit": {

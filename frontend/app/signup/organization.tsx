@@ -5,10 +5,12 @@ import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import GoogleSignIn from '@/components/GoogleSignIn';
+import { useAuth } from '../context/AuthContext';
 
 export default function OrganizationSignUpScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
+    const { login } = useAuth();
 
     // State for form fields
     const [email, setEmail] = useState('');
@@ -26,7 +28,6 @@ export default function OrganizationSignUpScreen() {
     const [dropdownVisible, setDropdownVisible] = useState(false);
 
     // Organization Types
-    // Organization Types
     const orgTypes = [
         { label: 'University Department', value: 'UNIVERSITY_DEPARTMENT' },
         { label: 'Student Union', value: 'STUDENT_UNION' },
@@ -39,6 +40,76 @@ export default function OrganizationSignUpScreen() {
         { label: 'Community Group', value: 'COMMUNITY_GROUP' },
         { label: 'Other', value: 'OTHER' }
     ];
+
+    // Helper to decode JWT
+    const parseJwt = (token: string) => {
+        try {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(atob(base64).split('').map(function (c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            return JSON.parse(jsonPayload);
+        } catch (e) {
+            return null;
+        }
+    };
+
+    const handleGoogleLogin = async (idToken: string) => {
+        try {
+            // Call Backend
+            const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/auth/google', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ idToken })
+            });
+            const json = await response.json();
+
+            if (json.success && json.data && json.data.accessToken) {
+                const accessToken = json.data.accessToken;
+
+                // Decode token to find role if not in response
+                let role = json.data.role;
+                if (!role) {
+                    const decoded = parseJwt(accessToken);
+                    if (decoded) {
+                        // Check fields where role might be
+                        role = decoded.role || (Array.isArray(decoded.scope) ? decoded.scope[0] : decoded.scope);
+                        // Infer from ID presence if still missing
+                        if (!role && decoded.organizationId) role = 'ORGANIZATION';
+                    }
+                }
+
+                const normalizedRole = (role || '').toUpperCase();
+
+                // Call login context
+                await login(accessToken, { ...json.data, email: json.data.email || 'Google User' });
+
+                // Check Profile Completion for Students
+                if (normalizedRole === 'STUDENT' && json.data.profileComplete === false) {
+                    router.replace('/signup/google-student-id');
+                    return;
+                }
+
+                if (normalizedRole === 'ORGANIZATION') {
+                    router.replace('/(tabs-org)/home');
+                } else if (normalizedRole === 'STUDENT') {
+                    router.replace('/(tabs-student)/home');
+                } else if (normalizedRole === 'ADMIN') {
+                    // @ts-ignore
+                    router.replace('/admin/dashboard');
+                } else {
+                    // Default fallback
+                    router.replace('/(tabs-student)/home');
+                }
+            } else {
+                Alert.alert("Google Login Failed", json.message || "Could not verify with backend.");
+            }
+        } catch (error) {
+            console.error("Google Login Error:", error);
+            Alert.alert("Error", "Network error during Google Login.");
+        }
+    };
 
     const handleCreateAccount = async () => {
         // Validation
@@ -72,8 +143,6 @@ export default function OrganizationSignUpScreen() {
                 phoneNumber: phone
             };
 
-            // console.log("DEBUG: Org Register Payload:", JSON.stringify(payload));
-
             const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/organization/register', {
                 method: 'POST',
                 headers: {
@@ -83,17 +152,9 @@ export default function OrganizationSignUpScreen() {
             });
 
             const json = await response.json();
-            // console.log("DEBUG: Org Register Response:", JSON.stringify(json));
 
             if (json.success) {
-                // Log ID for manual activation
-                // Based on user response: field is 'organizationId'
                 const newOrgId = json.data?.organizationId;
-
-                // console.log(">>> REGISTRATION SUCCESS. JSON:", JSON.stringify(json));
-                // console.log(">>> Found ID:", newOrgId);
-
-                // Check if ID exists (including 0 if that's a valid ID in your system, though usually it's > 0)
                 if (newOrgId !== undefined && newOrgId !== null) {
                     Alert.alert(
                         "Success",
@@ -101,7 +162,6 @@ export default function OrganizationSignUpScreen() {
                         [{ text: "OK", onPress: () => router.replace('/login') }]
                     );
                 } else {
-                    // Debug mode: Show full structure if ID missing
                     Alert.alert(
                         "Success (No ID Found)",
                         `Account created but could not find ID.\nResponse: ${JSON.stringify(json.data)}`,
@@ -109,12 +169,9 @@ export default function OrganizationSignUpScreen() {
                     );
                 }
             } else {
-                // Extract detailed validation errors if available
                 let errorMessage = json.message || "Could not create account.";
                 if (json.data && typeof json.data === 'object') {
-                    // Map keys to friendly names and format
                     const errors = Object.entries(json.data).map(([key, msg]) => {
-                        // Optional: Map key to friendly name (e.g. organizationName -> Organization Name)
                         const fieldName = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
                         return `• ${fieldName}: ${msg as string}`;
                     });
@@ -125,7 +182,6 @@ export default function OrganizationSignUpScreen() {
                 Alert.alert("Registration Failed", errorMessage);
             }
         } catch (error) {
-            // console.error("Org Register Error:", error);
             Alert.alert("Error", "An network error occurred. Please try again.");
         }
     };
@@ -263,14 +319,6 @@ export default function OrganizationSignUpScreen() {
 
                 {/* Footer Section */}
                 <View style={styles.footer}>
-                    <Text style={styles.orText}>- OR Continue with -</Text>
-
-                    <GoogleSignIn style={styles.googleButton}>
-                        <View style={styles.googleIconContainer}>
-                            <Ionicons name="logo-google" size={24} color="#EA4335" />
-                        </View>
-                    </GoogleSignIn>
-
                     <View style={styles.loginContainer}>
                         <Text style={styles.loginText}>I Already Have an Account </Text>
                         <TouchableOpacity onPress={handleLogin}>

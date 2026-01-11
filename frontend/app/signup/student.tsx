@@ -5,10 +5,12 @@ import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import GoogleSignIn from '@/components/GoogleSignIn';
+import { useAuth } from '../context/AuthContext';
 
 export default function StudentSignUpScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
+    const { login } = useAuth();
 
     // State for form fields
     const [email, setEmail] = useState('');
@@ -21,6 +23,76 @@ export default function StudentSignUpScreen() {
     // Visibility toggles
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+    // Helper to decode JWT
+    const parseJwt = (token: string) => {
+        try {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(atob(base64).split('').map(function (c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            return JSON.parse(jsonPayload);
+        } catch (e) {
+            return null;
+        }
+    };
+
+    const handleGoogleLogin = async (idToken: string) => {
+        try {
+            // Call Backend - New Endpoint for Student Signup
+            const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/auth/sign-up-with-google-for-student', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ idToken })
+            });
+            const json = await response.json();
+
+            if (json.success && json.data && json.data.accessToken) {
+                const accessToken = json.data.accessToken;
+
+                // Decode token to find role if not in response
+                let role = json.data.role;
+                if (!role) {
+                    const decoded = parseJwt(accessToken);
+                    if (decoded) {
+                        // Check fields where role might be
+                        role = decoded.role || (Array.isArray(decoded.scope) ? decoded.scope[0] : decoded.scope);
+                        // Infer from ID presence if still missing
+                        if (!role && decoded.organizationId) role = 'ORGANIZATION';
+                    }
+                }
+
+                const normalizedRole = (role || '').toUpperCase();
+
+                // Call login context
+                await login(accessToken, { ...json.data, email: json.data.email || 'Google User' });
+
+                // Check Profile Completion for Students
+                if (normalizedRole === 'STUDENT' && json.data.profileComplete === false) {
+                    router.replace('/signup/google-student-id');
+                    return;
+                }
+
+                if (normalizedRole === 'ORGANIZATION') {
+                    router.replace('/(tabs-org)/home');
+                } else if (normalizedRole === 'STUDENT') {
+                    router.replace('/(tabs-student)/home');
+                } else if (normalizedRole === 'ADMIN') {
+                    // @ts-ignore
+                    router.replace('/admin/dashboard');
+                } else {
+                    // Default fallback
+                    router.replace('/(tabs-student)/home');
+                }
+            } else {
+                Alert.alert("Google Login Failed", json.message || "Could not verify with backend.");
+            }
+        } catch (error) {
+            console.error("Google Login Error:", error);
+            Alert.alert("Error", "Network error during Google Login.");
+        }
+    };
 
     const handleRegister = async () => {
         // Validation
@@ -58,8 +130,6 @@ export default function StudentSignUpScreen() {
                 phoneNumber: phone
             };
 
-            // console.log("DEBUG: Register Payload:", JSON.stringify(payload));
-
             const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/students/register', {
                 method: 'POST',
                 headers: {
@@ -69,14 +139,12 @@ export default function StudentSignUpScreen() {
             });
 
             const json = await response.json();
-            // console.log("DEBUG: Register Response:", JSON.stringify(json));
 
             if (json.success) {
                 Alert.alert("Success", "Account created successfully! Please login.", [
                     { text: "OK", onPress: () => router.replace('/login') }
                 ]);
             } else {
-                // Extract detailed validation errors if available
                 let errorMessage = json.message || "Could not create account.";
                 if (json.data && typeof json.data === 'object') {
                     const validationErrors = Object.values(json.data).join('\n');
@@ -87,7 +155,6 @@ export default function StudentSignUpScreen() {
                 Alert.alert("Registration Failed", errorMessage);
             }
         } catch (error) {
-            // console.error("Register Error:", error);
             Alert.alert("Error", "An network error occurred. Please try again.");
         }
     };
@@ -216,7 +283,7 @@ export default function StudentSignUpScreen() {
 
                     <GoogleSignIn
                         style={styles.googleButton}
-                        onPress={() => router.push('/signup/google-student-id')}
+                        onSignInSuccess={handleGoogleLogin}
                     >
                         <View style={styles.googleIconContainer}>
                             <Ionicons name="logo-google" size={24} color="#EA4335" />

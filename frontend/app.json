@@ -30,7 +30,16 @@
       "permissions": [
         "CAMERA",
         "RECORD_AUDIO",
-        "READ_MEDIA_IMAGES"
+        "READ_MEDIA_IMAGES",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+        "android.permission.ACCESS_MEDIA_LOCATION",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_MEDIA_AUDIO"
       ]
     },
     "web": {
@@ -86,7 +95,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "3676cdf7-c5c2-4df7-a23e-2e6ab438b344"
+        "projectId": "bf2d0eab-6783-4cc2-847f-e0c426d3aed4"
       }
     }
   }

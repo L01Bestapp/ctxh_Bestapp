@@ -137,6 +137,78 @@ export default function LoginScreen() {
         router.push('/signup/role-selection');
     };
 
+    // Helper to decode JWT
+    const parseJwt = (token: string) => {
+        try {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(atob(base64).split('').map(function (c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            return JSON.parse(jsonPayload);
+        } catch (e) {
+            return null;
+        }
+    };
+
+    const handleGoogleLogin = async (idToken: string) => {
+        try {
+            // Call Backend - New Endpoint for Login
+            const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/auth/login-with-google', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ idToken })
+            });
+            const json = await response.json();
+
+            if (json.success && json.data && json.data.accessToken) {
+                const accessToken = json.data.accessToken;
+
+                // Decode token to find role if not in response
+                let role = json.data.role;
+                if (!role) {
+                    const decoded = parseJwt(accessToken);
+                    if (decoded) {
+                        // Check fields where role might be
+                        role = decoded.role || (Array.isArray(decoded.scope) ? decoded.scope[0] : decoded.scope);
+                        // Infer from ID presence if still missing
+                        if (!role && decoded.organizationId) role = 'ORGANIZATION';
+                    }
+                }
+
+                const normalizedRole = (role || '').toUpperCase();
+
+                // Call login context
+                await login(accessToken, { ...json.data, email: json.data.email || 'Google User' });
+
+                // Check Profile Completion for Students
+                // Note: If API doesn't return profileComplete, we might need an extra call, 
+                // but for now keeping existing logic if data has it.
+                if (normalizedRole === 'STUDENT' && json.data.profileComplete === false) {
+                    router.replace('/signup/google-student-id');
+                    return;
+                }
+
+                if (normalizedRole === 'ORGANIZATION') {
+                    router.replace('/(tabs-org)/home');
+                } else if (normalizedRole === 'STUDENT') {
+                    router.replace('/(tabs-student)/home');
+                } else if (normalizedRole === 'ADMIN') {
+                    // @ts-ignore
+                    router.replace('/admin/dashboard');
+                } else {
+                    // Default fallback
+                    router.replace('/(tabs-student)/home');
+                }
+            } else {
+                Alert.alert("Google Login Failed", json.message || "Could not verify with backend.");
+            }
+        } catch (error) {
+            console.error("Google Login Error:", error);
+            Alert.alert("Error", "Network error during Google Login.");
+        }
+    };
+
     return (
         <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -203,7 +275,7 @@ export default function LoginScreen() {
                 <View style={styles.footer}>
                     <Text style={styles.orText}>- OR Continue with -</Text>
 
-                    <GoogleSignIn style={styles.googleButton}>
+                    <GoogleSignIn style={styles.googleButton} onSignInSuccess={handleGoogleLogin}>
                         <View style={styles.googleIconContainer}>
                             <Ionicons name="logo-google" size={24} color="#EA4335" />
                         </View>

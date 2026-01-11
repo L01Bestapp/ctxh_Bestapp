@@ -1,23 +1,55 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Platform, KeyboardAvoidingView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Platform, KeyboardAvoidingView, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../context/AuthContext';
 
 export default function GoogleStudentIdScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const [studentId, setStudentId] = useState('');
+    const [loading, setLoading] = useState(false);
+    const { token } = useAuth(); // Get auth token
 
-    const handleComplete = () => {
+    const handleComplete = async () => {
         if (!studentId.trim()) {
-            // Simple validation
+            Alert.alert("Required", "Please enter your Student ID.");
             return;
         }
-        // In a real app, you would update the user's profile with this ID here
-        console.log("Updated Student ID for Google Account:", studentId);
-        router.replace('/(tabs-student)/home');
+
+        setLoading(true);
+        try {
+            // Need to determine endpoint. Assuming update-profile accepts partial updates.
+            // If it mimics student-profile-settings, it put to /students/update-profile
+            const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/students/update-profile', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    mssv: studentId.trim()
+                })
+            });
+
+            const json = await response.json();
+
+            if (json.success) {
+                Alert.alert("Success", "Profile completed!", [
+                    { text: "OK", onPress: () => router.replace('/(tabs-student)/home') }
+                ]);
+            } else {
+                Alert.alert("Error", json.message || "Could not update Student ID.");
+            }
+
+        } catch (error) {
+            console.error("Update Error:", error);
+            Alert.alert("Error", "Network error. Please try again.");
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -59,8 +91,12 @@ export default function GoogleStudentIdScreen() {
                 </View>
 
                 {/* Complete Button */}
-                <TouchableOpacity style={styles.completeButton} onPress={handleComplete}>
-                    <Text style={styles.completeButtonText}>Complete Signup</Text>
+                <TouchableOpacity style={styles.completeButton} onPress={handleComplete} disabled={loading}>
+                    {loading ? (
+                        <ActivityIndicator color="#fff" />
+                    ) : (
+                        <Text style={styles.completeButtonText}>Complete Signup</Text>
+                    )}
                 </TouchableOpacity>
 
             </ScrollView>

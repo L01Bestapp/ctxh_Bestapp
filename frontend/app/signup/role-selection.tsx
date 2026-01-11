@@ -90,13 +90,13 @@ export default function RoleSelectionScreen() {
             </View>
 
             {/* Google Login (Placeholder) */}
-            <TouchableOpacity style={styles.googleButton}>
+            {/* <TouchableOpacity style={styles.googleButton}> */}
                 {/* Use Ionicons logo-google if available, or just a generic placeholder for now */}
                 {/* Or build a circle with G logo */}
-                <View style={styles.googleIconContainer}>
-                    <Ionicons name="logo-google" size={24} color="#EA4335" />
-                </View>
-            </TouchableOpacity>
+                {/* <View style={styles.googleIconContainer}> */}
+                    {/* <Ionicons name="logo-google" size={24} color="#EA4335" /> */}
+                {/* </View> */}
+            {/* </TouchableOpacity> */}
 
             {/* Already Account */}
             <View style={styles.loginContainer}>
