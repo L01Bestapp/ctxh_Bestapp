@@ -1,139 +1,218 @@
-
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, Dimensions, TouchableOpacity, Modal, TouchableWithoutFeedback } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, Image, Dimensions, TouchableOpacity, Modal, TouchableWithoutFeedback, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { LineChart, PieChart } from 'react-native-chart-kit';
+import { Ionicons } from '@expo/vector-icons';
+import { PieChart, LineChart, ProgressChart } from 'react-native-chart-kit';
+import { useAuth } from '../context/AuthContext';
+import HeaderAvatar from '../components/HeaderAvatar';
+import { useFocusEffect, useRouter } from 'expo-router';
 
 const { width } = Dimensions.get('window');
 
-export default function OrgStatisticsScreen() {
-    const [selectedMonth, setSelectedMonth] = useState('This Month');
-    const [isFilterVisible, setIsFilterVisible] = useState(false);
-    // Mock Filter States
-    const [tempTime, setTempTime] = useState('This Month');
-    const [selectedTypes, setSelectedTypes] = useState<string[]>(['All']);
+interface StatisticsData {
+    activityStats: {
+        totalActivities: number;
+        upcomingCount: number;
+        ongoingCount: number;
+        completedCount: number;
+        canceledCount: number;
+    };
+    participantStats: {
+        totalSlots: number;
+        totalRegistrations: number;
+        totalApproved: number;
+        totalAttended: number;
+        avgAttendanceRate: number;
+    };
+    impactStats: {
+        totalCtxhDaysGenerated: number;
+    };
+}
 
-    // Mock Data
+// Interfaces
+interface Activity {
+    activityId: number;
+    title: string;
+    registrationState: string;
+    activityStatus: string;
+    approvedParticipants: number;
+    maxParticipants: number;
+    createdAt: string;
+    startDateTime: string;
+    registrationDeadline: string;
+}
+
+interface AttendanceSummary {
+    activityTitle: string;
+    totalEnrolled: number;
+    totalPresent: number;
+    totalAbsent: number;
+    attendanceRate: number;
+    activityStartDate: string;
+}
+
+// Colors
+const COLORS = {
+    primary: '#FF4058',
+    secondary: '#42A5F5',
+    success: '#66BB6A',
+    warning: '#FFA726',
+    text: '#333333',
+    subText: '#757575',
+    cardBg: '#FFFFFF',
+    background: '#F5F5F7'
+};
+
+export default function OrgStatisticsScreen() {
+    const router = useRouter();
+    const { token, user } = useAuth();
+
+    // State
+    const [stats, setStats] = useState<StatisticsData | null>(null);
+    const [activities, setActivities] = useState<Activity[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
+
+    // Modal State
+    const [modalVisible, setModalVisible] = useState(false);
+    const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
+    const [attendanceStats, setAttendanceStats] = useState<AttendanceSummary | null>(null);
+    const [loadingModal, setLoadingModal] = useState(false);
+
+    // Initial Fetch
+    useFocusEffect(
+        useCallback(() => {
+            fetchData();
+        }, [])
+    );
+
+    const fetchData = async () => {
+        setLoading(true);
+        await Promise.all([fetchStatistics(), fetchActivities()]);
+        setLoading(false);
+    };
+
+    const fetchStatistics = async () => {
+        try {
+            const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/organization/statistics', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const json = await response.json();
+            if (json.success && json.data) {
+                setStats(json.data);
+            }
+        } catch (error) {
+            console.error("Fetch Stats Error:", error);
+        }
+    };
+
+    const fetchActivities = async () => {
+        try {
+            const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/activities/get-all-activity-for-organization', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const json = await response.json();
+            if (json.success && Array.isArray(json.data)) {
+                // Sort by date descending
+                const sorted = json.data.sort((a: Activity, b: Activity) =>
+                    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                );
+                setActivities(sorted);
+            }
+        } catch (error) {
+            console.error("Fetch Activities Error:", error);
+        }
+    };
+
+    const fetchAttendanceDetails = async (activityId: number) => {
+        try {
+            setLoadingModal(true);
+            const response = await fetch(`https://marg-astonishing-matthias.ngrok-free.dev/api/v1/activities/${activityId}/attendance/summary`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const json = await response.json();
+            if (json.success && json.data) {
+                setAttendanceStats(json.data);
+            }
+        } catch (error) {
+            console.error("Fetch Attendance Error:", error);
+        } finally {
+            setLoadingModal(false);
+        }
+    };
+
+    const handleActivityPress = (activity: Activity) => {
+        setSelectedActivity(activity);
+        setAttendanceStats(null); // Reset prev data
+        setModalVisible(true);
+        fetchAttendanceDetails(activity.activityId);
+    };
+
+    const onRefresh = async () => {
+        setRefreshing(true);
+        await fetchData();
+        setRefreshing(false);
+    };
+
     const cardData = [
         {
             title: 'Activity',
             icon: 'pulse-outline' as const,
             image: require('../../assets/images/ac_card.png'),
-            value: '2',
+            value: stats ? stats.activityStats.totalActivities.toString() : '0',
             label: 'created',
-            bgColor: '#90CAF9', // Light Blue
-            textColor: '#1565C0',
+            bgColor: '#90CAF9',
+            textColor: '#fff',
         },
         {
-            title: 'Student',
+            title: 'Participant',
             icon: 'people-outline' as const,
             image: require('../../assets/images/student_card.png'),
-            value: '100',
+            value: stats ? stats.participantStats.totalApproved.toString() : '0',
             label: 'approved',
-            bgColor: '#EF9A9A', // Light Red
-            textColor: '#C62828',
+            bgColor: '#EF9A9A',
+            textColor: '#fff',
         },
         {
-            title: 'HOUR',
+            title: 'CTXH DAYS',
             icon: 'hourglass-outline' as const,
             image: require('../../assets/images/hour_card.png'),
-            value: '250',
-            label: 'held',
-            bgColor: '#CE93D8', // Light Purple
-            textColor: '#6A1B9A',
+            value: stats ? stats.impactStats.totalCtxhDaysGenerated.toFixed(1) : '0',
+            label: 'generated',
+            bgColor: '#CE93D8',
+            textColor: '#fff',
         },
     ];
 
-    const chartConfig = {
-        backgroundGradientFrom: '#fff',
-        backgroundGradientTo: '#fff',
-        color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-        labelColor: (opacity = 1) => `rgba(100, 100, 100, ${opacity})`, // Softer gray labels
-        strokeWidth: 3,
-        barPercentage: 0.5,
-        useShadowColorFromDataset: false,
-        decimalPlaces: 0,
-        propsForLabels: {
-            fontSize: 11,
-            fontWeight: '600'
-        },
-        propsForBackgroundLines: {
-            strokeDasharray: "4", // Dashed lines
-            stroke: "#eee"
-        }
-    };
+    // Data for Line Chart (Last 6 activities)
+    const recentActivities = activities.slice(0, 6).reverse(); // Reverse to show timeline left-right
+    const chartLabels = recentActivities.map(a => {
+        // Shorten title
+        return a.title.length > 5 ? a.title.substring(0, 5) + '..' : a.title;
+    });
+    const chartData = recentActivities.map(a => a.approvedParticipants);
 
-    const registrationData = {
-        labels: ["W1", "W2", "W3", "W4"],
-        datasets: [
-            {
-                data: [1, 5, 2, 4],
-                color: (opacity = 1) => `rgba(41, 121, 255, ${opacity})`, //  #2979FF (Vibrant Blue)
-                strokeWidth: 3,
-            },
-            {
-                data: [1, 2, 5, 3],
-                color: (opacity = 1) => `rgba(255, 23, 68, ${opacity})`, // #FF1744 (Vibrant Red)
-                strokeWidth: 3
-            }
-        ],
-        legend: ["Registrations", "Check-ins"]
-    };
-
-    const pieData = [
-        { name: "Participated", population: 60, color: "#00BFA5", legendFontColor: "#7F7F7F", legendFontSize: 11 }, // Teal Accent
-        { name: "Not Participated", population: 40, color: "#CFD8DC", legendFontColor: "#7F7F7F", legendFontSize: 11 } // Blue Gray
-    ];
-
-    const toggleType = (type: string) => {
-        if (type === 'All') {
-            setSelectedTypes(['All']);
-            return;
-        }
-        let newTypes = selectedTypes.filter(t => t !== 'All');
-        if (newTypes.includes(type)) {
-            newTypes = newTypes.filter(t => t !== type);
-        } else {
-            newTypes.push(type);
-        }
-        if (newTypes.length === 0) newTypes = ['All'];
-        setSelectedTypes(newTypes);
-    };
-
-    const applyFilter = () => {
-        setSelectedMonth(tempTime);
-        setIsFilterVisible(false);
-    };
+    // If no data, provide dummy for visual safety or hide
+    const safeChartData = chartData.length > 0 ? chartData : [0];
+    const safeChartLabels = chartLabels.length > 0 ? chartLabels : ['No Data'];
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
+            {/* Header */}
             <View style={styles.header}>
-                <TouchableOpacity style={styles.menuButton}>
-                    <Ionicons name="menu" size={24} color="#333" />
+                <TouchableOpacity onPress={() => router.push('/notifications')} style={styles.backButton}>
+                    <Ionicons name="notifications-outline" size={24} color="#333" />
                 </TouchableOpacity>
                 <Image source={require('../../assets/images/logo_univolun.png')} style={styles.logo} resizeMode="contain" />
-                <Image source={require('../../assets/images/org_image.png')} style={styles.avatar} />
+                <HeaderAvatar />
             </View>
 
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                <Text style={styles.pageTitle}>GENERAL STATISTICS</Text>
-
-                {/* Filter Row */}
-                <View style={styles.filterContainer}>
-                    <TouchableOpacity style={styles.dropdownButton} onPress={() => setIsFilterVisible(true)}>
-                        <Ionicons name="calendar-outline" size={18} color="#333" style={{ marginRight: 8 }} />
-                        <Text style={styles.dropdownText}>{selectedMonth}</Text>
-                        <Ionicons name="chevron-down" size={18} color="#666" style={{ marginLeft: 8 }} />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity style={styles.filterButton} onPress={() => setIsFilterVisible(true)}>
-                        <Text style={styles.filterText}>Filter</Text>
-                        <Ionicons name="filter" size={16} color="#333" />
-                    </TouchableOpacity>
-                </View>
-
-                {/* Cards Row - Fixed Layout (No Scroll) */}
+            <ScrollView
+                contentContainerStyle={styles.scrollContent}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />}
+                showsVerticalScrollIndicator={false}
+            >
+                {/* Summary Cards */}
                 <View style={styles.cardsContainer}>
                     {cardData.map((item, index) => (
                         <View key={index} style={[styles.card, { backgroundColor: item.bgColor }]}>
@@ -152,240 +231,615 @@ export default function OrgStatisticsScreen() {
                     ))}
                 </View>
 
-                {/* Charts - Full Width for better visibility */}
-                {/* Line Chart */}
-                <View style={styles.chartBoxFull}>
-                    <View style={styles.chartHeaderRow}>
-                        <Text style={styles.chartTitle}>Registration Trend Over Time</Text>
-                        <View style={styles.legendContainer}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 10 }}>
-                                <View style={{ width: 10, height: 3, borderRadius: 2, backgroundColor: '#2979FF', marginRight: 4 }} />
-                                <Text style={{ fontSize: 10, color: '#555' }}>Reg</Text>
+                {/* Participation Overview (Pie Chart) - Reusing existing structure logic if present or keeping logical */}
+                {/* Keeping the existing Participation Overview section but simplifying for brevity in this replacement */}
+                <View style={styles.chartSection}>
+                    <Text style={styles.sectionTitle}>PARTICIPATION OVERVIEW</Text>
+                    {stats ? (
+                        <View style={styles.participationContainer}>
+                            {/* Simplified Stats Grid instead of just Pie */}
+                            <View style={styles.detailsGrid}>
+                                <View style={styles.detailItem}>
+                                    <Text style={styles.detailValue}>{stats.participantStats.totalSlots}</Text>
+                                    <Text style={styles.detailLabel}>Slots</Text>
+                                </View>
+                                <View style={styles.detailItem}>
+                                    <Text style={styles.detailValue}>{stats.participantStats.totalRegistrations}</Text>
+                                    <Text style={styles.detailLabel}>Register</Text>
+                                </View>
+                                <View style={styles.detailItem}>
+                                    <Text style={styles.detailValue}>{stats.participantStats.totalApproved}</Text>
+                                    <Text style={styles.detailLabel}>Approve</Text>
+                                </View>
+                                <View style={styles.detailItem}>
+                                    <Text style={[styles.detailValue, { color: COLORS.success }]}>{stats.participantStats.totalAttended}</Text>
+                                    <Text style={styles.detailLabel}>Attended</Text>
+                                </View>
                             </View>
-                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                <View style={{ width: 10, height: 3, borderRadius: 2, backgroundColor: '#FF1744', marginRight: 4 }} />
-                                <Text style={{ fontSize: 10, color: '#555' }}>Check-in</Text>
+
+                            <View style={{ alignItems: 'center' }}>
+                                <View style={{ width: width - 60, height: 220, alignItems: 'center', justifyContent: 'center' }}>
+                                    <ProgressChart
+                                        data={{
+                                            labels: ["Attendance"],
+                                            data: [stats.participantStats.avgAttendanceRate / 100]
+                                        }}
+                                        width={width - 60}
+                                        height={220}
+                                        strokeWidth={16}
+                                        radius={80}
+                                        chartConfig={{
+                                            backgroundGradientFrom: "#fff",
+                                            backgroundGradientTo: "#fff",
+                                            color: (opacity = 1) => `rgba(41, 182, 246, ${opacity})`, // Light Blue #29B6F6
+                                            strokeWidth: 2,
+                                        }}
+                                        hideLegend={true}
+                                    />
+                                    {/* Center Text (Donut Hole) - Absolute Centered */}
+                                    <View style={styles.donutHole}>
+                                        <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#29B6F6' }}>
+                                            {stats.participantStats.avgAttendanceRate.toFixed(1)}%
+                                        </Text>
+                                        <Text style={{ fontSize: 12, color: '#78909C', fontWeight: '600' }}>RATE</Text>
+                                    </View>
+                                </View>
+
+                                {/* Custom Legend */}
+                                <View style={styles.customLegendContainer}>
+                                    <View style={styles.legendItem}>
+                                        <View style={[styles.legendDot, { backgroundColor: '#29B6F6' }]} />
+                                        <Text style={styles.legendText}>Attended</Text>
+                                        <Text style={styles.legendValue}>{stats.participantStats.avgAttendanceRate.toFixed(1)}%</Text>
+                                    </View>
+                                    <View style={styles.legendItem}>
+                                        <View style={[styles.legendDot, { backgroundColor: '#81D4FA' }]} />
+                                        <Text style={styles.legendText}>Absent</Text>
+                                        <Text style={styles.legendValue}>{(100 - stats.participantStats.avgAttendanceRate).toFixed(1)}%</Text>
+                                    </View>
+                                </View>
                             </View>
                         </View>
-                    </View>
-                    <View style={{ alignItems: 'center', overflow: 'hidden' }}>
+                    ) : (
+                        <ActivityIndicator size="large" color="#42A5F5" />
+                    )}
+                </View>
+
+                {/* Activity Trends Line Chart */}
+                <View style={[styles.chartSection, { marginTop: 20 }]}>
+                    <Text style={styles.sectionTitle}>ACTIVITY GROWTH TRENDS</Text>
+                    <Text style={styles.chartSubtitle}>Participants per recent activity</Text>
+                    {activities.length > 0 ? (
                         <LineChart
-                            data={registrationData}
-                            width={width - 48} // Slightly narrower to fit padding
+                            data={{
+                                labels: safeChartLabels,
+                                datasets: [{ data: safeChartData }]
+                            }}
+                            width={width - 40}
                             height={220}
+                            yAxisLabel=""
+                            yAxisSuffix=""
                             chartConfig={{
-                                ...chartConfig,
-                                propsForDots: { r: "4", strokeWidth: "2", stroke: "#fff" },
+                                backgroundColor: '#fff',
+                                backgroundGradientFrom: '#fff',
+                                backgroundGradientTo: '#fff',
+                                decimalPlaces: 0,
+                                color: (opacity = 1) => `rgba(255, 64, 88, ${opacity})`,
+                                labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                                style: { borderRadius: 16 },
+                                propsForDots: { r: "5", strokeWidth: "2", stroke: "#ffa726" }
                             }}
                             bezier
-                            withDots={true}
-                            withInnerLines={true}
-                            withOuterLines={false}
-                            withVerticalLines={false}
-                            withHorizontalLabels={true}
-                            fromZero
-                            style={{ marginVertical: 8, borderRadius: 16, paddingRight: 30 }} // Padding right to show last label
+                            style={styles.chartStyle}
                         />
-                    </View>
+                    ) : (
+                        <Text style={styles.noDataText}>No activities to display trends.</Text>
+                    )}
                 </View>
 
-                {/* Pie Chart */}
-                <View style={styles.chartBoxFull}>
-                    <Text style={[styles.chartTitle, { marginBottom: 10 }]}>Average Participation Rate</Text>
-                    <View style={{ alignItems: 'center', justifyContent: 'center', height: 220, position: 'relative' }}>
-                        <PieChart
-                            data={pieData}
-                            width={width - 50}
-                            height={220}
-                            chartConfig={chartConfig}
-                            accessor={"population"}
-                            backgroundColor={"transparent"}
-                            paddingLeft={"0"}
-                            center={[(width - 50) / 4, 0]} // Center based on available width
-                            absolute={false}
-                            hasLegend={false}
-                        />
-                        {/* Donut Hole (White Circle) + Label */}
-                        <View style={{
-                            position: 'absolute',
-                            width: 100, height: 100, borderRadius: 50,
-                            backgroundColor: '#fff', // Creates the "Hole"
-                            justifyContent: 'center', alignItems: 'center',
-                            shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 2
-                        }}>
-                            <Text style={{ fontWeight: '900', fontSize: 28, color: '#00BFA5' }}>60%</Text>
-                            <Text style={{ fontSize: 10, color: '#888', marginTop: -2 }}>Rate</Text>
-                        </View>
-                    </View>
-
-                    <View style={styles.pieLegend}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 15 }}>
-                            <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#00BFA5', marginRight: 6 }} />
-                            <Text style={{ fontSize: 12, color: '#333', fontWeight: '600' }}>Participated</Text>
-                        </View>
-                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#CFD8DC', marginRight: 6 }} />
-                            <Text style={{ fontSize: 12, color: '#333', fontWeight: '600' }}>Not Participated</Text>
-                        </View>
-                    </View>
+                {/* Activity List */}
+                <View style={[styles.chartSection, { marginTop: 10, paddingBottom: 40 }]}>
+                    <Text style={styles.sectionTitle}>RECENT ACTIVITIES</Text>
+                    {activities.map((item) => (
+                        <TouchableOpacity
+                            key={item.activityId}
+                            style={styles.activityItem}
+                            onPress={() => handleActivityPress(item)}
+                        >
+                            <View style={[styles.activityIconBox, { backgroundColor: item.registrationState === 'OPEN' ? '#E0F2F1' : '#FFEBEE' }]}>
+                                <Ionicons
+                                    name={item.registrationState === 'OPEN' ? 'flag-outline' : 'lock-closed-outline'}
+                                    size={20}
+                                    color={item.registrationState === 'OPEN' ? '#009688' : '#D32F2F'}
+                                />
+                            </View>
+                            <View style={styles.activityContent}>
+                                <Text style={styles.activityTitle} numberOfLines={1}>{item.title}</Text>
+                                <Text style={styles.activityDate}>{new Date(item.startDateTime).toLocaleDateString()}</Text>
+                            </View>
+                            <View style={styles.activityRight}>
+                                <Text style={styles.activityStatsText}>{item.approvedParticipants}/{item.maxParticipants}</Text>
+                                <Text style={styles.activityLabel}>Joined</Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={20} color="#ccc" />
+                        </TouchableOpacity>
+                    ))}
                 </View>
 
-                {/* Rankings */}
-                <View style={styles.rankingContainer}>
-                    {/* Activity Ranking */}
-                    <View style={[styles.rankingBox, styles.rankingBoxPop]}>
-                        <View style={[styles.rankingHeader, { backgroundColor: '#FF7043' }]}>
-                            <Ionicons name="trophy" size={16} color="#fff" style={{ marginRight: 5 }} />
-                            <Text style={styles.rankingTitle}>TOP ACTIVITIES</Text>
-                        </View>
-                        <View style={styles.rankingList}>
-                            <View style={styles.rankItemRow}>
-                                <Text style={styles.rankIndex}>1</Text>
-                                <Text style={styles.rankText} numberOfLines={1}>Green Summer (300)</Text>
-                            </View>
-                            <View style={styles.rankItemRow}>
-                                <Text style={styles.rankIndex}>2</Text>
-                                <Text style={styles.rankText} numberOfLines={1}>Exam Support (250)</Text>
-                            </View>
-                            <View style={styles.rankItemRow}>
-                                <Text style={styles.rankIndex}>3</Text>
-                                <Text style={styles.rankText} numberOfLines={1}>Book Donation (180)</Text>
-                            </View>
-                        </View>
-                    </View>
-
-                    {/* Student Ranking */}
-                    <View style={[styles.rankingBox, styles.rankingBoxPop]}>
-                        <View style={[styles.rankingHeader, { backgroundColor: '#43A047' }]}>
-                            <Ionicons name="ribbon" size={16} color="#fff" style={{ marginRight: 5 }} />
-                            <Text style={styles.rankingTitle}>TOP STUDENTS</Text>
-                        </View>
-                        <View style={styles.rankingList}>
-                            <View style={styles.rankItemRow}>
-                                <Text style={styles.rankIndex}>1</Text>
-                                <Text style={styles.rankText} numberOfLines={1}>Tran Thi Be (20h)</Text>
-                            </View>
-                            <View style={styles.rankItemRow}>
-                                <Text style={styles.rankIndex}>2</Text>
-                                <Text style={styles.rankText} numberOfLines={1}>Le Van Khiem (18h)</Text>
-                            </View>
-                            <View style={styles.rankItemRow}>
-                                <Text style={styles.rankIndex}>3</Text>
-                                <Text style={styles.rankText} numberOfLines={1}>Pham Duy Khoi (15h)</Text>
-                            </View>
-                        </View>
-                    </View>
-                </View>
-                <View style={{ height: 100 }} />
             </ScrollView>
 
-            {/* Filter Modal */}
+            {/* Attendance Detail Modal */}
             <Modal
-                animationType="fade"
                 transparent={true}
-                visible={isFilterVisible}
-                onRequestClose={() => setIsFilterVisible(false)}
+                visible={modalVisible}
+                animationType="slide"
+                onRequestClose={() => setModalVisible(false)}
             >
-                <TouchableWithoutFeedback onPress={() => setIsFilterVisible(false)}>
-                    <View style={styles.modalOverlay}>
-                        <TouchableWithoutFeedback>
-                            <View style={styles.modalContent}>
-                                <Text style={styles.modalTitle}>Filter Statistics</Text>
+                <View style={styles.modalContainer}>
+                    <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
+                        <View style={styles.modalOverlay} />
+                    </TouchableWithoutFeedback>
 
-                                <Text style={styles.sectionLabel}>Time Period</Text>
-                                <View style={styles.chipRow}>
-                                    {['This Week', 'This Month', 'Last Month', 'This Year'].map(t => (
-                                        <TouchableOpacity
-                                            key={t}
-                                            style={[styles.chip, tempTime === t && styles.chipSelected]}
-                                            onPress={() => setTempTime(t)}
-                                        >
-                                            <Text style={[styles.chipText, tempTime === t && styles.chipTextSelected]}>{t}</Text>
-                                        </TouchableOpacity>
-                                    ))}
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Attendance Summary</Text>
+                            <TouchableOpacity onPress={() => setModalVisible(false)}>
+                                <Ionicons name="close-circle" size={28} color="#ccc" />
+                            </TouchableOpacity>
+                        </View>
+
+                        {loadingModal ? (
+                            <ActivityIndicator size="large" color={COLORS.primary} style={{ marginVertical: 20 }} />
+                        ) : attendanceStats ? (
+                            <View>
+                                <Text style={styles.modalActivityTitle}>{attendanceStats.activityTitle}</Text>
+                                <Text style={styles.modalDate}>
+                                    Date: {new Date(attendanceStats.activityStartDate).toLocaleDateString()}
+                                </Text>
+
+                                <View style={styles.statRow}>
+                                    <View style={[styles.statBox, { backgroundColor: '#E3F2FD' }]}>
+                                        <Text style={[styles.statNumber, { color: '#1976D2' }]}>{attendanceStats.totalEnrolled}</Text>
+                                        <Text style={styles.statLabel}>Enrolled</Text>
+                                    </View>
+                                    <View style={[styles.statBox, { backgroundColor: '#E8F5E9' }]}>
+                                        <Text style={[styles.statNumber, { color: '#388E3C' }]}>{attendanceStats.totalPresent}</Text>
+                                        <Text style={styles.statLabel}>Present</Text>
+                                    </View>
                                 </View>
-
-                                <Text style={styles.sectionLabel}>Activity Type</Text>
-                                <View style={styles.chipRow}>
-                                    {['All', 'Education', 'Environment', 'Social'].map(t => (
-                                        <TouchableOpacity
-                                            key={t}
-                                            style={[styles.chip, selectedTypes.includes(t) && styles.chipSelected]}
-                                            onPress={() => toggleType(t)}
-                                        >
-                                            <Text style={[styles.chipText, selectedTypes.includes(t) && styles.chipTextSelected]}>{t}</Text>
-                                        </TouchableOpacity>
-                                    ))}
+                                <View style={styles.statRow}>
+                                    <View style={[styles.statBox, { backgroundColor: '#FFEBEE' }]}>
+                                        <Text style={[styles.statNumber, { color: '#D32F2F' }]}>{attendanceStats.totalAbsent}</Text>
+                                        <Text style={styles.statLabel}>Absent</Text>
+                                    </View>
+                                    <View style={[styles.statBox, { backgroundColor: '#FFF3E0' }]}>
+                                        <Text style={[styles.statNumber, { color: '#F57C00' }]}>{(attendanceStats.attendanceRate * 1).toFixed(1)}%</Text>
+                                        <Text style={styles.statLabel}>Rate</Text>
+                                    </View>
                                 </View>
-
-                                <TouchableOpacity style={styles.applyButton} onPress={applyFilter}>
-                                    <Text style={styles.applyButtonText}>Apply Filter</Text>
-                                </TouchableOpacity>
                             </View>
-                        </TouchableWithoutFeedback>
+                        ) : (
+                            <Text style={{ textAlign: 'center', marginVertical: 20, color: '#888' }}>
+                                No data available.
+                            </Text>
+                        )}
                     </View>
-                </TouchableWithoutFeedback>
+                </View>
             </Modal>
-
-        </SafeAreaView>
+        </SafeAreaView >
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fff' },
-    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 10 },
-    menuButton: { padding: 5, backgroundColor: '#F5F5F5', borderRadius: 50 },
-    logo: { width: 100, height: 40 },
-    avatar: { width: 35, height: 35, borderRadius: 17.5 },
+    container: {
+        flex: 1,
+        backgroundColor: '#F5F5F7',
+    },
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        backgroundColor: '#fff',
+    },
+    backButton: {
+        padding: 8,
+        backgroundColor: '#F5F5F5',
+        borderRadius: 50,
+    },
+    logo: {
+        width: 100,
+        height: 40,
+    },
+    avatar: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+    },
+    scrollContent: {
+        paddingBottom: 30,
+    },
+    cardsContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        paddingHorizontal: 15,
+        marginTop: 15,
+    },
+    card: {
+        width: (width - 45) / 3,
+        padding: 8,
+        borderRadius: 16,
+        height: 140,
+        justifyContent: 'space-between',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 6,
+        elevation: 4,
+    },
+    cardHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start'
+    },
+    cardTitle: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        textTransform: 'uppercase',
+        color: '#fff',
+    },
+    cardContent: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        flex: 1,
+    },
+    cardImage: {
+        width: 80,
+        height: 60,
+    },
+    cardFooter: {
+        flexDirection: 'row',
+        alignItems: 'flex-end',
+        justifyContent: 'space-between'
+    },
+    cardValue: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#fff',
+    },
+    cardLabel: {
+        fontSize: 8,
+        color: 'rgba(255,255,255,0.9)',
+        textAlign: 'right',
+        marginLeft: 2,
+        marginBottom: 2,
+    },
+    chartSection: {
+        backgroundColor: '#fff',
+        marginTop: 15,
+        marginHorizontal: 15,
+        padding: 15,
+        borderRadius: 16,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 5,
+        elevation: 2,
+        alignItems: 'center', // Added for PieChart centering
+    },
+    sectionTitle: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: '#333',
+        marginBottom: 10,
+        letterSpacing: 0.5,
+        alignSelf: 'flex-start',
+    },
+    chartSubtitle: {
+        fontSize: 12,
+        color: '#888',
+        marginBottom: 10,
+        alignSelf: 'flex-start',
+    },
+    chartStyle: {
+        borderRadius: 16,
+        marginVertical: 8,
+    },
+    participationContainer: {
+        alignItems: 'center',
+        width: '100%',
+    },
+    detailsGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+        width: '100%',
+        marginBottom: 15,
+    },
+    detailItem: {
+        width: '23%',
+        alignItems: 'center',
+        backgroundColor: '#FAFAFA',
+        paddingVertical: 10,
+        borderRadius: 10,
+    },
+    detailValue: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#333',
+    },
+    detailLabel: {
+        fontSize: 10,
+        color: '#888',
+        marginTop: 2,
+    },
+    pieContainer: {
+        alignItems: 'center',
+    },
+    chartCaption: {
+        fontSize: 12,
+        color: '#666',
+        marginTop: 5,
+        fontStyle: 'italic',
+    },
+    noDataText: {
+        textAlign: 'center',
+        padding: 20,
+        color: '#999',
+    },
+    // Activity List Styles
+    activityItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F0F0F0',
+        width: '100%',
+    },
+    activityIconBox: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    activityContent: {
+        flex: 1,
+    },
+    activityTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#333',
+        marginBottom: 4,
+    },
+    activityDate: {
+        fontSize: 11,
+        color: '#999',
+    },
+    activityRight: {
+        alignItems: 'flex-end',
+        marginRight: 10,
+    },
+    activityStatsText: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: '#333',
+    },
+    activityLabel: {
+        fontSize: 10,
+        color: '#999',
+    },
+    // Modal Styles
+    modalContainer: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalOverlay: {
+        flex: 1,
+    },
+    modalContent: {
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        padding: 20,
+        minHeight: 350,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#333',
+    },
+    modalActivityTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#333',
+        marginBottom: 5,
+    },
+    modalDate: {
+        fontSize: 12,
+        color: '#888',
+        marginBottom: 20,
+    },
+    statRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 15,
+    },
+    statBox: {
+        width: '48%',
+        padding: 15,
+        borderRadius: 12,
+        alignItems: 'center',
+    },
+    statNumber: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        marginBottom: 5,
+    },
+    statLabel: {
+        fontSize: 12,
+        color: '#666',
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+    },
+    // Ranking Section
+    rankingContainer: {
+        marginHorizontal: 15,
+        marginTop: 20,
+        marginBottom: 20,
+    },
+    rankingHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 10,
+    },
+    rankingTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#333',
+    },
+    seeAllText: {
+        fontSize: 12,
+        color: '#42A5F5',
+        fontWeight: 'bold',
+    },
+    rankingItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#fff',
+        padding: 10,
+        borderRadius: 12,
+        marginBottom: 10,
+    },
+    rankBadge: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: '#FFEBEE',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 10,
+    },
+    rankText: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        color: '#D32F2F',
+    },
+    rankAvatar: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        marginRight: 10,
+    },
+    rankInfo: {
+        flex: 1,
+    },
+    rankName: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: '#333',
+    },
+    rankScore: {
+        fontSize: 12,
+        color: '#888',
+    },
 
-    scrollContent: { padding: 20, paddingBottom: 50 },
-    pageTitle: { fontSize: 20, fontWeight: '900', textAlign: 'center', marginBottom: 20, color: '#1A237E' },
+    // Participation Details Grid
+    detailsContainer: {
+        width: '100%',
+        backgroundColor: '#FAFAFA',
+        borderRadius: 12,
+        padding: 15,
+        marginBottom: 10,
+    },
+    detailsTitle: {
+        marginBottom: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
+        paddingBottom: 5,
+    },
+    detailRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    detailValueContainer: {
+        backgroundColor: '#fff',
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 4,
+        borderWidth: 1,
+        borderColor: '#eee',
+    },
 
-    filterContainer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, marginBottom: 25 },
-    dropdownButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 25, borderWidth: 1, borderColor: '#eee' },
-    dropdownText: { fontSize: 14, fontWeight: '600', color: '#333' },
-    filterButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5F5F5', paddingVertical: 10, paddingHorizontal: 15, borderRadius: 25 },
-    filterText: { fontSize: 14, fontWeight: '500', color: '#333', marginRight: 5 },
-
-    // Fixed Cards Container
-    cardsContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 25 },
-    // One third width minus gap
-    card: { width: (width - 40 - 20) / 3, height: 140, borderRadius: 16, padding: 8, justifyContent: 'space-between', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 6, elevation: 4 },
-    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-    cardTitle: { color: '#fff', fontWeight: 'bold', fontSize: 11 },
-    cardContent: { alignItems: 'center', justifyContent: 'center', flex: 1 },
-    cardImage: { width: 80, height: 60 }, // Increased size
-    cardFooter: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
-    cardValue: { fontSize: 18, fontWeight: 'bold', color: '#fff' },
-    cardLabel: { fontSize: 8, color: 'rgba(255,255,255,0.9)', textAlign: 'right', marginLeft: 2, marginBottom: 2 },
-
-    // Full Width Charts
-    chartBoxFull: { width: '100%', backgroundColor: '#fff', padding: 15, borderRadius: 16, borderWidth: 1, borderColor: '#f0f0f0', marginBottom: 20, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5, elevation: 2 },
-    chartHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-    chartTitle: { fontSize: 14, fontWeight: 'bold', color: '#333' },
-    legendContainer: { flexDirection: 'row', gap: 8 },
-    pieLegend: { marginTop: 5, flexDirection: 'row', justifyContent: 'center', gap: 15 },
-
-    rankingContainer: { flexDirection: 'row', justifyContent: 'space-between' },
-    rankingBox: { width: (width - 50) / 2, borderRadius: 16, backgroundColor: '#fff', overflow: 'hidden', borderWidth: 1, borderColor: '#eee' },
-    rankingBoxPop: { shadowColor: '#000', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 5 },
-    rankingHeader: { paddingVertical: 8, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-    rankingTitle: { color: '#fff', fontSize: 10, fontWeight: '900', letterSpacing: 0.5 },
-    rankingList: { padding: 10 },
-    rankItemRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-    rankIndex: { width: 16, height: 16, borderRadius: 8, backgroundColor: '#eee', textAlign: 'center', textAlignVertical: 'center', fontSize: 9, fontWeight: 'bold', marginRight: 6, color: '#555' },
-    rankText: { fontSize: 10, color: '#333', fontWeight: '600', flex: 1 },
-
-    // Modal
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-    modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 25, borderTopRightRadius: 25, padding: 25, minHeight: 350 },
-    modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
-    sectionLabel: { fontSize: 14, fontWeight: '600', color: '#666', marginBottom: 10, marginTop: 10 },
-    chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-    chip: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, backgroundColor: '#F5F5F5', borderWidth: 1, borderColor: '#eee' },
-    chipSelected: { backgroundColor: '#E3F2FD', borderColor: '#2196F3' },
-    chipText: { fontSize: 12, color: '#666' },
-    chipTextSelected: { color: '#2196F3', fontWeight: 'bold' },
-    applyButton: { backgroundColor: '#2196F3', paddingVertical: 15, borderRadius: 15, alignItems: 'center', marginTop: 30 },
-    applyButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+    // Chart Components
+    chartContainer: {
+        marginHorizontal: 15,
+        marginTop: 20,
+        backgroundColor: '#fff',
+        borderRadius: 16,
+        padding: 20,
+        alignItems: 'center',
+    },
+    chartTitle: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: '#555',
+        marginBottom: 15,
+        alignSelf: 'flex-start',
+    },
+    donutHole: {
+        position: 'absolute',
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: '#fff',
+        justifyContent: 'center',
+        alignItems: 'center',
+        top: '50%',
+        left: '50%',
+        marginTop: -40,
+        marginLeft: -40,
+        elevation: 4, // Ensure it sits above chart on Android if needed
+        zIndex: 10,
+    },
+    // Custom Legend Styles
+    customLegendContainer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        marginTop: 20,
+        gap: 20,
+        width: '100%',
+    },
+    legendItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    legendDot: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        marginRight: 8,
+    },
+    legendText: {
+        fontSize: 12,
+        color: '#555',
+        marginRight: 5,
+    },
+    legendValue: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        color: '#333',
+    },
 });

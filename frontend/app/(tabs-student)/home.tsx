@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, TextInput, ScrollView, TouchableOpacity, FlatList, ImageBackground } from 'react-native';
-import { useRouter } from 'expo-router';
+import { View, Text, StyleSheet, Image, TextInput, ScrollView, TouchableOpacity, FlatList, ImageBackground, RefreshControl } from 'react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -18,12 +18,15 @@ interface Activity {
   maxParticipants: number;
   approvedParticipants: number;
   remainingSlots: number;
+  registrationDeadline: string; // Added field
   registrationState: string; // For Display on Card
   activityStatus: string;   // For Filtering (UPCOMING, ONGOING, ENDED)
   createdAt: string;
+  organizationName: string;
 }
 
 import { useAuth } from '../context/AuthContext';
+import HeaderAvatar from '../components/HeaderAvatar';
 
 export default function StudentHomeScreen() {
   const router = useRouter();
@@ -40,35 +43,43 @@ export default function StudentHomeScreen() {
 
   const [currentPage, setCurrentPage] = React.useState(1);
   const ITEMS_PER_PAGE = 8;
-  const [statusFilter, setStatusFilter] = React.useState<'All' | 'UPCOMING' | 'ONGOING' | 'ENDED'>('All');
+  const [statusFilter, setStatusFilter] = React.useState<'All' | 'UPCOMING' | 'ONGOING' | 'ENDED' | 'OPEN'>('All');
 
-  // Fetch API
-  React.useEffect(() => {
-    const fetchActivities = async () => {
-      if (!token) {
-        return;
-      }
+  const [refreshing, setRefreshing] = React.useState(false);
 
-      try {
-        const url = 'https://marg-astonishing-matthias.ngrok-free.dev/api/v1/activities';
-        const response = await fetch(url, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        const json = await response.json();
+  // Fetch API with Auto-Refresh on Focus
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchActivities();
+    }, [token])
+  );
 
-        if (json.success && json.data) {
-          setActivities(json.data);
+  const fetchActivities = async () => {
+    if (!token) return;
+
+    try {
+      const url = `https://marg-astonishing-matthias.ngrok-free.dev/api/v1/activities?t=${Date.now()}`;
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
-      } catch (error) {
-        console.error("Failed to fetch activities:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+      });
+      const json = await response.json();
 
+      if (json.success && json.data) {
+        setActivities(json.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch activities:", error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
     fetchActivities();
   }, [token]);
 
@@ -89,8 +100,13 @@ export default function StudentHomeScreen() {
     }
 
     // 3. Filter by Status (activityStatus)
+    // 3. Filter by Status (activityStatus)
     if (statusFilter !== 'All') {
-      result = result.filter(item => item.activityStatus === statusFilter);
+      if (statusFilter === 'OPEN') {
+        result = result.filter(item => (item.registrationState || '').toUpperCase() === 'OPEN');
+      } else {
+        result = result.filter(item => item.activityStatus === statusFilter);
+      }
     }
 
     // 4. Sort by Date Posted (createdAt)
@@ -152,14 +168,14 @@ export default function StudentHomeScreen() {
     'OTHER'
   ];
 
-  const DEFAULT_IMAGES = [
-    require('../../assets/images/ob1.png'),
-    require('../../assets/images/ob2.png'),
-    require('../../assets/images/ob3.png'),
-  ];
+  // Fallback Image
+  const DEFAULT_IMAGE = require('../../assets/images/alternative.png');
 
   const renderActivityItem = ({ item }: { item: Activity }) => {
-    const imageSource = item.imageUrl ? { uri: item.imageUrl } : DEFAULT_IMAGES[item.activityId % DEFAULT_IMAGES.length];
+    const cleanUrl = item.imageUrl ? item.imageUrl.trim() : '';
+    const imageSource = (cleanUrl.startsWith('http'))
+      ? { uri: cleanUrl }
+      : DEFAULT_IMAGE;
 
     // Determine Color based on registrationState (OPEN, CLOSED, FULL, etc.)
     let statusColor = '#616161';
@@ -195,9 +211,9 @@ export default function StudentHomeScreen() {
         <View style={styles.cardContent}>
           <Text style={styles.activityTitle} numberOfLines={1}>{item.title}</Text>
 
-          <View style={styles.organizerRow}>
+          <View style={styles.organizationNameRow}>
             <Ionicons name="person-circle-outline" size={14} color="#666" />
-            <Text style={styles.organizerText} numberOfLines={1}>Organization</Text>
+            <Text style={styles.organizationNameText} numberOfLines={1}>{item.organizationName || 'Organization'}</Text>
           </View>
 
           {/* Details Section */}
@@ -218,26 +234,33 @@ export default function StudentHomeScreen() {
             </View>
           </View>
 
+          {/* Deadline Warning */}
+          {item.registrationDeadline && (
+            <Text style={{ fontSize: 10, color: '#D32F2F', fontStyle: 'italic', marginBottom: 4, marginLeft: 2 }}>
+              Deadline: {new Date(item.registrationDeadline).toLocaleDateString()}
+            </Text>
+          )}
+
           {/* Divider Line */}
           <View style={styles.divider} />
 
           <View style={styles.cardFooter}>
             <View style={styles.slotContainer}>
               <Ionicons name="people-outline" size={14} color="#555" />
-              <Text style={styles.slotText}>{item.remainingSlots}/{item.maxParticipants}</Text>
+              <Text style={styles.slotText}>{item.approvedParticipants}/{item.maxParticipants}</Text>
             </View>
             <TouchableOpacity style={styles.viewDetailsButton} onPress={() => router.push({
               pathname: '/activity-detail-student',
               params: {
                 id: item.activityId, // Pass ID
                 title: item.title,
-                // organizer: item.organizer, // Missing in API
+                // organizationName: item.organizationName, // Missing in API
                 time: item.startDateTime,
                 location: item.address,
                 status: item.registrationState, // Pass registrationState to detail
                 slots: `${item.approvedParticipants}/${item.maxParticipants}`,
                 description: item.shortDescription,
-                image: item.imageUrl || Image.resolveAssetSource(DEFAULT_IMAGES[item.activityId % DEFAULT_IMAGES.length]).uri
+                image: (item.imageUrl && item.imageUrl.trim().startsWith('http')) ? item.imageUrl.trim() : Image.resolveAssetSource(DEFAULT_IMAGE).uri
               }
             })}>
               <Text style={styles.viewDetailsText}>Detail</Text>
@@ -250,7 +273,11 @@ export default function StudentHomeScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 100 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#FF4058']} />}
+      >
 
         {/* Header */}
         <View style={styles.header}>
@@ -258,9 +285,7 @@ export default function StudentHomeScreen() {
             <Ionicons name="notifications-outline" size={28} color="#333" />
           </TouchableOpacity>
           <Image source={require('../../assets/images/logo_univolun.png')} style={styles.headerLogo} resizeMode="contain" />
-          <TouchableOpacity onPress={() => router.push('/(tabs-student)/profile')}>
-            <Image source={require('../../assets/images/student_image.png')} style={styles.avatar} />
-          </TouchableOpacity>
+          <HeaderAvatar />
         </View>
 
         {/* Search Bar */}
@@ -359,21 +384,32 @@ export default function StudentHomeScreen() {
           </TouchableOpacity>
         </View>
 
+
         {/* Banner */}
-        <ImageBackground
-          source={require('../../assets/images/banner.png')}
-          style={styles.banner}
-          resizeMode="cover"
-          imageStyle={{ borderRadius: 16 }}
-        >
-          <View style={styles.bannerContent}>
-            <Text style={styles.bannerTitle}>{upcomingCount} ACTIVITIES</Text>
-            <Text style={styles.bannerSubtitle}>IS OPEN</Text>
-            <TouchableOpacity style={styles.checkNowButton} onPress={() => setStatusFilter('UPCOMING')}>
-              <Text style={styles.checkNowText}>CHECK NOW →</Text>
-            </TouchableOpacity>
-          </View>
-        </ImageBackground>
+        {(() => {
+          const openCount = activities.filter(item => (item.registrationState || 'UNKNOWN').toUpperCase() === 'OPEN').length;
+          return (
+            <ImageBackground
+              source={require('../../assets/images/banner.png')}
+              style={styles.banner}
+              resizeMode="cover"
+              imageStyle={{ borderRadius: 16 }}
+            >
+              <View style={styles.bannerContent}>
+                <Text style={styles.bannerTitle}>{openCount} ACTIVITIES</Text>
+                <Text style={styles.bannerSubtitle}>IS OPEN</Text>
+                <TouchableOpacity
+                  style={[styles.checkNowButton, statusFilter === 'OPEN' && { backgroundColor: '#333' }]}
+                  onPress={() => setStatusFilter(prev => prev === 'OPEN' ? 'All' : 'OPEN')}
+                >
+                  <Text style={styles.checkNowText}>
+                    {statusFilter === 'OPEN' ? 'CLEAR FILTER ✕' : 'CHECK NOW →'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </ImageBackground>
+          );
+        })()}
 
         {/* Activity List */}
         <View style={styles.listContainer}>
@@ -620,12 +656,12 @@ const styles = StyleSheet.create({
     marginBottom: 2, // Reduced from 6
     color: '#222',
   },
-  organizerRow: {
+  organizationNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
   },
-  organizerText: {
+  organizationNameText: {
     fontSize: 11,
     color: '#666',
     marginLeft: 4,

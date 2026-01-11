@@ -31,25 +31,11 @@ export default function LoginScreen() {
             return;
         }
 
-        // ... existing code ...
-
-
-
-        /*
-        // Optional: Password length check (if you want to catch simple typos before sending)
-        if (password.length < 1) { 
-             Alert.alert("Invalid Input", "Password cannot be empty.");
-             return;
-        }
-        */
-
         try {
             const payload = {
                 email: username,
                 password: password
             };
-
-            // console.log("DEBUG: Login Payload:", JSON.stringify(payload));
 
             // Use generic auth endpoint
             const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/auth/login', {
@@ -61,52 +47,78 @@ export default function LoginScreen() {
             });
 
             const json = await response.json();
-            // console.log("DEBUG: Login Response:", JSON.stringify(json));
 
             if (json.success && json.data && json.data.accessToken) {
-                // Save token to context (decoded user data will be set there)
-                // Pass the ENTIRE data object (or relevant parts) as the second argument 'user'
-                // Pass the ENTIRE data object including EMAIL (username) to helper
-                // console.log(">>> LOGIN SUCCESS. User Data:", JSON.stringify(json.data));
-                await login(json.data.accessToken, { ...json.data, email: username });
-
-                // Assuming role is extracted in Context.
-                // For now, simple fallback navigation logic based on input if token doesn't have role
-                // But ideally we redirect based on user.role from context after login
-                // Since `login` is async and updates state, we might need to wait or rely on check.
-
-                // For immediate UX, let's infer simple redirect or check response role if available
-                // Use the returned role for navigation
+                const tempToken = json.data.accessToken;
                 const role = json.data.role; // "STUDENT" | "ORGANIZATION" | "ADMIN"
 
-                // Post-login check for account status
+                // 1. Mandatory Status Checks
                 try {
-                    const checkResponse = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/students', {
-                        method: 'GET',
-                        headers: {
-                            'Authorization': `Bearer ${json.data.accessToken}`,
-                            'Content-Type': 'application/json',
-                        },
-                    });
-                    const checkJson = await checkResponse.json();
+                    // Check if Student Account is Disabled (Code 1104 check)
+                    if (role === 'STUDENT') {
+                        const checkResponse = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/students', {
+                            method: 'GET',
+                            headers: {
+                                'Authorization': `Bearer ${tempToken}`,
+                                'Content-Type': 'application/json',
+                            },
+                        });
+                        const checkJson = await checkResponse.json();
 
-                    if (checkJson.code === 1104 || (checkJson.message && checkJson.message.toLowerCase().includes("account has been disabled"))) {
-                        // console.log(">>> ACCOUNT DISABLED DETECTED. Redirecting to Verify Email.");
-                        router.replace('/verify-email');
-                        return; // Stop further navigation
+                        if (checkJson.code === 1104 || (checkJson.message && checkJson.message.toLowerCase().includes("account has been disabled"))) {
+                            await login(json.data.accessToken, { ...json.data, email: username });
+                            router.replace('/verify-email');
+                            return;
+                        }
                     }
+
+                    // Check for BAN Status via Profile
+                    let profileEndpoint = '';
+                    if (role === 'STUDENT') {
+                        profileEndpoint = 'https://marg-astonishing-matthias.ngrok-free.dev/api/v1/students/my-profile';
+                    } else if (role === 'ORGANIZATION') {
+                        profileEndpoint = 'https://marg-astonishing-matthias.ngrok-free.dev/api/v1/organization/my-profile';
+                    }
+
+                    if (role === 'STUDENT' || role === 'ORGANIZATION') {
+                        const profileResponse = await fetch(profileEndpoint, {
+                            headers: { 'Authorization': `Bearer ${tempToken}` }
+                        });
+                        const profileJson = await profileResponse.json();
+                        if (profileJson.success && profileJson.data && (profileJson.data.status === 'BAN' || profileJson.data.status === 'BANNED')) {
+                            Alert.alert("Account Banned", "Your account has been banned. Please contact the administrator.");
+                            return;
+                        }
+                    }
+
+                    // SPECIAL QR CHECK FOR STUDENTS (User Requested)
+                    if (role === 'STUDENT') {
+                        const qrResponse = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/students/my-qr', {
+                            headers: { 'Authorization': `Bearer ${tempToken}` }
+                        });
+                        const qrJson = await qrResponse.json();
+
+                        if (qrResponse.status === 403 || (qrJson.message && qrJson.message.toLowerCase().includes("banned"))) {
+                            Alert.alert("Account Banned", "Your account has been banned. Please contact the administrator.");
+                            return;
+                        }
+                    }
+
                 } catch (checkError) {
-                    console.error("Post-login status check failed:", checkError);
+                    console.error("Status Check Error (non-blocking):", checkError);
                 }
+
+                // 2. Proceed to Login if Checks Passed
+                await login(json.data.accessToken, { ...json.data, email: username });
 
                 if (role === 'ORGANIZATION') {
                     router.replace('/(tabs-org)/home');
                 } else if (role === 'STUDENT') {
                     router.replace('/(tabs-student)/home');
                 } else if (role === 'ADMIN') {
-                    router.replace('/admin/dashboard' as any);
+                    // @ts-ignore
+                    router.replace('/admin/dashboard');
                 } else {
-                    // Fallback or unknown role
                     Alert.alert("Login Success", `Welcome! Role: ${role}`);
                     router.replace('/(tabs-student)/home');
                 }

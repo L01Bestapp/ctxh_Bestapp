@@ -10,10 +10,47 @@ export default function ForgotPasswordScreen() {
     const insets = useSafeAreaInsets();
 
     const [email, setEmail] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
 
-    const handleSubmit = () => {
-        // Logic to submit forgot password request
-        router.push('/login/otp-verification');
+    const handleSubmit = async () => {
+        if (!email) {
+            alert("Please enter your email address.");
+            return;
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            alert("Please enter a valid email address.");
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            // Note: API uses query param for email according to user instruction
+            const response = await fetch(`https://marg-astonishing-matthias.ngrok-free.dev/api/v1/auth/forgot-password?email=${encodeURIComponent(email)}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: '' // Empty body as per curl
+            });
+
+            const json = await response.json();
+
+            if (response.ok && json.success) {
+                // Success
+                alert(json.message || "Recovery email sent! Please check your inbox.");
+                // Navigate to OTP
+                router.push({ pathname: '/login/otp-verification', params: { email } });
+            } else {
+                alert(json.message || "Failed to send recovery email.");
+            }
+        } catch (error) {
+            console.error("Forgot Password Error:", error);
+            alert("An error occurred. Please try again.");
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -44,6 +81,7 @@ export default function ForgotPasswordScreen() {
                         onChangeText={setEmail}
                         keyboardType="email-address"
                         autoCapitalize="none"
+                        editable={!isLoading}
                     />
                 </View>
 
@@ -54,8 +92,12 @@ export default function ForgotPasswordScreen() {
                 </Text>
 
                 {/* Submit Button */}
-                <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-                    <Text style={styles.submitButtonText}>Submit</Text>
+                <TouchableOpacity
+                    style={[styles.submitButton, isLoading && { opacity: 0.7 }]}
+                    onPress={handleSubmit}
+                    disabled={isLoading}
+                >
+                    <Text style={styles.submitButtonText}>{isLoading ? "Sending..." : "Submit"}</Text>
                 </TouchableOpacity>
 
             </ScrollView>

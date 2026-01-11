@@ -1,5 +1,6 @@
-import React, { useRef } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, Image, ScrollView, Alert, Dimensions, Platform } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView, Alert, Dimensions, Platform, FlatList } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import ViewShot from "react-native-view-shot";
 import * as MediaLibrary from 'expo-media-library';
@@ -7,38 +8,59 @@ import * as Sharing from 'expo-sharing';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFonts, GreatVibes_400Regular } from '@expo-google-fonts/great-vibes';
 import { PlayfairDisplay_400Regular, PlayfairDisplay_700Bold, PlayfairDisplay_700Bold_Italic } from '@expo-google-fonts/playfair-display';
+import { DancingScript_700Bold } from '@expo-google-fonts/dancing-script';
+import { Cinzel_700Bold } from '@expo-google-fonts/cinzel';
 
 const { width, height } = Dimensions.get('window');
+
+interface Certificate {
+    certificateId: number;
+    certificateCode: string;
+    studentName: string;
+    activityTitle: string;
+    ctxhHours: number;
+    representativeName: string;
+    issuedDate: string;
+    organizationName?: string;
+    [key: string]: any;
+}
 
 interface CertificateModalProps {
     visible: boolean;
     onClose: () => void;
+    certificates: Certificate[];
 }
 
-export default function CertificateModal({ visible, onClose }: CertificateModalProps) {
+export default function CertificateModal({ visible, onClose, certificates = [] }: CertificateModalProps) {
+    const router = useRouter(); // Initialize router
     const viewShotRef = useRef<ViewShot>(null);
+    const [selectedCert, setSelectedCert] = useState<Certificate | null>(null);
 
     let [fontsLoaded] = useFonts({
         GreatVibes_400Regular,
         PlayfairDisplay_400Regular,
         PlayfairDisplay_700Bold,
         PlayfairDisplay_700Bold_Italic,
+        DancingScript_700Bold,
+        Cinzel_700Bold,
     });
 
     const handleSave = async () => {
         try {
+            const { status } = await MediaLibrary.requestPermissionsAsync(true);
+            if (status !== 'granted') {
+                Alert.alert("Permission Required", "Please allow access to photos to save the certificate.");
+                return;
+            }
+
             if (viewShotRef.current && (viewShotRef.current as any).capture) {
                 const uri = await (viewShotRef.current as any).capture();
-                const { status } = await MediaLibrary.requestPermissionsAsync();
-                if (status === 'granted') {
-                    await MediaLibrary.createAssetAsync(uri);
-                    Alert.alert("Success", "Certificate saved to gallery!");
-                } else {
-                    Alert.alert("Permission required", "Please grant permission to save.");
-                }
+                await MediaLibrary.createAssetAsync(uri);
+                Alert.alert("Success", "Certificate saved to gallery!");
             }
         } catch (error: any) {
-            Alert.alert("Error", error.message);
+            console.error("Save Error:", error);
+            Alert.alert("Error", "Failed to save: " + error.message);
         }
     };
 
@@ -57,6 +79,22 @@ export default function CertificateModal({ visible, onClose }: CertificateModalP
             Alert.alert("Error", error.message);
         }
     };
+
+    const renderCertificateItem = ({ item }: { item: Certificate }) => (
+        <TouchableOpacity
+            style={styles.listItem}
+            onPress={() => setSelectedCert(item)}
+        >
+            <View style={styles.listIcon}>
+                <MaterialCommunityIcons name="certificate" size={28} color="#C5A059" />
+            </View>
+            <View style={styles.listContent}>
+                <Text style={styles.listTitle} numberOfLines={2}>{item.activityTitle}</Text>
+                <Text style={styles.listSub}>{new Date(item.issuedDate).toLocaleDateString()} • {item.ctxhHours} Hours</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color="#ccc" />
+        </TouchableOpacity>
+    );
 
     if (!fontsLoaded) {
         return null;
@@ -79,108 +117,152 @@ export default function CertificateModal({ visible, onClose }: CertificateModalP
                         </TouchableOpacity>
                     </View>
 
-                    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+                    {/* View: List or Detailed Certificate */}
+                    {!selectedCert ? (
+                        <View style={styles.listContainer}>
+                            <Text style={styles.listHeaderTitle}>My Certificates</Text>
+                            <View style={styles.listDivider} />
 
-                        {/* Certificate View to Capture */}
-                        <ViewShot ref={viewShotRef} options={{ format: "jpg", quality: 1.0 }} style={styles.captureContainer}>
-
-                            {/* Gold/Premium Gradient Border */}
-                            <LinearGradient
-                                colors={['#C5A059', '#E6C888', '#C5A059']}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 1 }}
-                                style={styles.outerBorder}
-                            >
-                                <View style={styles.certificatePaper}>
-
-                                    {/* Corner Decorations */}
-                                    <View style={[styles.corner, styles.cornerTL]} />
-                                    <View style={[styles.corner, styles.cornerTR]} />
-                                    <View style={[styles.corner, styles.cornerBL]} />
-                                    <View style={[styles.corner, styles.cornerBR]} />
-
-                                    {/* Decorative Icon */}
-                                    <View style={styles.headerIcon}>
-                                        <MaterialCommunityIcons name="trophy-award" size={50} color="#C5A059" />
-                                    </View>
-
-                                    <Text style={styles.certHeader}>CERTIFICATE</Text>
-                                    <Text style={styles.certSubHeader}>OF APPRECIATION</Text>
-
-                                    <View style={styles.separatorLine} />
-
-                                    <Text style={styles.presentText}>PROUDLY PRESENTED TO</Text>
-
-                                    {/* Name */}
-                                    <Text style={styles.recipientName}>Sarah Taylor</Text>
-
-                                    <Text style={styles.bodyText}>
-                                        For outstanding contribution and dedication to the
-                                    </Text>
-                                    <Text style={styles.programName}>UNI VOLUNTEER PROGRAM</Text>
-
-                                    <View style={styles.statsContainer}>
-                                        <View style={styles.statItem}>
-                                            <MaterialCommunityIcons name="clock-time-four-outline" size={20} color="#888" />
-                                            <Text style={styles.statText}>24.5 Hours</Text>
-                                        </View>
-                                        <View style={styles.verticalLine} />
-                                        <View style={styles.statItem}>
-                                            <MaterialCommunityIcons name="star-circle-outline" size={20} color="#888" />
-                                            <Text style={styles.statText}>12 Activities</Text>
-                                        </View>
-                                    </View>
-
-                                    {/* Signature Section */}
-                                    <View style={styles.footerRow}>
-                                        <View style={styles.signatureBlock}>
-                                            <Text style={styles.signatureText}>Jane Smith</Text>
-                                            <View style={styles.line} />
-                                            <Text style={styles.signLabel}>Program Director</Text>
-                                        </View>
-
-                                        {/* Gold Seal */}
-                                        <View style={styles.sealContainer}>
-                                            <MaterialCommunityIcons name="seal" size={45} color="#C5A059" />
-                                            <Text style={styles.sealText}>2025</Text>
-                                        </View>
-
-                                        <View style={styles.signatureBlock}>
-                                            <Text style={styles.dateText}>Oct 17, 2025</Text>
-                                            <View style={styles.line} />
-                                            <Text style={styles.signLabel}>Date</Text>
-                                        </View>
-                                    </View>
-
+                            {certificates.length === 0 ? (
+                                <View style={styles.emptyView}>
+                                    <MaterialCommunityIcons name="text-box-search-outline" size={48} color="#ccc" />
+                                    <Text style={styles.emptyText}>No certificates found yet.</Text>
                                 </View>
-                            </LinearGradient>
-                        </ViewShot>
-
-                        {/* Control Buttons */}
-                        <View style={styles.buttonRow}>
-                            <TouchableOpacity style={styles.actionButton} onPress={handleSave}>
-                                <LinearGradient
-                                    colors={['#4CAF50', '#45a049']}
-                                    style={styles.btnGradient}
-                                >
-                                    <Ionicons name="download" size={20} color="#fff" />
-                                    <Text style={styles.btnText}>Save Image</Text>
-                                </LinearGradient>
-                            </TouchableOpacity>
-
-                            <View style={{ width: 15 }} />
-
-                            <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
-                                <LinearGradient
-                                    colors={['#2196F3', '#1976D2']}
-                                    style={styles.btnGradient}
-                                >
-                                    <Ionicons name="share-social" size={20} color="#fff" />
-                                    <Text style={styles.btnText}>Share</Text>
-                                </LinearGradient>
-                            </TouchableOpacity>
+                            ) : (
+                                <FlatList
+                                    data={certificates}
+                                    renderItem={renderCertificateItem}
+                                    keyExtractor={(item) => item.certificateId.toString()}
+                                    contentContainerStyle={{ paddingBottom: 20 }}
+                                    showsVerticalScrollIndicator={false}
+                                />
+                            )}
                         </View>
-                    </ScrollView>
+                    ) : (
+                        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20, alignItems: 'center' }}>
+
+                            {/* Back Button */}
+                            <TouchableOpacity onPress={() => setSelectedCert(null)} style={styles.backButton}>
+                                <Ionicons name="arrow-back" size={24} color="#fff" />
+                                <Text style={styles.backText}>Back to List</Text>
+                            </TouchableOpacity>
+
+                            {/* Certificate View to Capture */}
+                            <ViewShot ref={viewShotRef} options={{ format: "jpg", quality: 1.0 }} style={styles.captureContainer}>
+
+                                {/* Gold/Premium Gradient Border */}
+                                <LinearGradient
+                                    colors={['#C5A059', '#E6C888', '#C5A059']}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 1 }}
+                                    style={styles.outerBorder}
+                                >
+                                    <View style={styles.certificatePaper}>
+
+                                        {/* Corner Decorations */}
+                                        <View style={[styles.corner, styles.cornerTL]} />
+                                        <View style={[styles.corner, styles.cornerTR]} />
+                                        <View style={[styles.corner, styles.cornerBL]} />
+                                        <View style={[styles.corner, styles.cornerBR]} />
+
+                                        {/* Decorative Icon */}
+                                        <View style={styles.headerIcon}>
+                                            <MaterialCommunityIcons name="trophy-award" size={50} color="#C5A059" />
+                                        </View>
+
+                                        <Text style={styles.certHeader}>CERTIFICATE</Text>
+                                        <Text style={styles.certSubHeader}>OF APPRECIATION</Text>
+
+                                        <View style={styles.separatorLine} />
+
+                                        <Text style={styles.presentText}>PROUDLY PRESENTED TO</Text>
+
+                                        {/* Name */}
+                                        <Text style={styles.recipientName}>{selectedCert.studentName}</Text>
+
+
+
+
+                                        <Text style={styles.bodyText}>
+                                            For outstanding contribution and dedication to the
+                                        </Text>
+
+                                        <TouchableOpacity onPress={() => {
+                                            onClose();
+                                            router.push(`/activity-detail-student?activityId=${selectedCert.activityId}&isRegistered=true&enrollmentStatus=APPROVED`);
+                                        }}>
+                                            <Text style={styles.programName} numberOfLines={2}>
+                                                {selectedCert.activityTitle?.toUpperCase()}
+                                            </Text>
+                                        </TouchableOpacity>
+
+                                        <Text style={styles.activityIdText}>(Activity ID: {selectedCert.activityId})</Text>
+
+
+
+                                        <View style={styles.statsContainer}>
+                                            <View style={styles.statItem}>
+                                                <MaterialCommunityIcons name="clock-time-four-outline" size={20} color="#888" />
+                                                <Text style={styles.statText}>{selectedCert.ctxhHours} Hours</Text>
+                                            </View>
+                                            <View style={styles.verticalLine} />
+                                            <View style={styles.statItem}>
+                                                <MaterialCommunityIcons name="office-building" size={20} color="#888" />
+                                                <Text style={styles.statText}>{selectedCert.organizationName || 'Organization'}</Text>
+                                            </View>
+                                        </View>
+
+                                        {/* Signature Section */}
+                                        <View style={styles.footerRow}>
+                                            <View style={styles.signatureBlock}>
+                                                <Text style={styles.signatureText}>{selectedCert.organizationName || selectedCert.representativeName}</Text>
+                                                <View style={styles.line} />
+                                                <Text style={styles.signLabel}>Representative</Text>
+                                            </View>
+
+                                            {/* Gold Seal */}
+                                            <View style={styles.sealContainer}>
+                                                <MaterialCommunityIcons name="seal" size={45} color="#C5A059" />
+                                                <Text style={styles.sealText}>{new Date(selectedCert.issuedDate).getFullYear()}</Text>
+                                            </View>
+
+                                            <View style={styles.signatureBlock}>
+                                                <Text style={styles.dateText}>{new Date(selectedCert.issuedDate).toLocaleDateString()}</Text>
+                                                <View style={styles.line} />
+                                                <Text style={styles.signLabel}>Issued Date</Text>
+                                            </View>
+                                        </View>
+
+                                    </View>
+                                </LinearGradient>
+                            </ViewShot>
+
+                            {/* Control Buttons */}
+                            <View style={styles.buttonRow}>
+                                <TouchableOpacity style={styles.actionButton} onPress={handleSave}>
+                                    <LinearGradient
+                                        colors={['#4CAF50', '#45a049']}
+                                        style={styles.btnGradient}
+                                    >
+                                        <Ionicons name="download" size={20} color="#fff" />
+                                        <Text style={styles.btnText}>Save Image</Text>
+                                    </LinearGradient>
+                                </TouchableOpacity>
+
+                                <View style={{ width: 15 }} />
+
+                                <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
+                                    <LinearGradient
+                                        colors={['#2196F3', '#1976D2']}
+                                        style={styles.btnGradient}
+                                    >
+                                        <Ionicons name="share-social" size={20} color="#fff" />
+                                        <Text style={styles.btnText}>Share</Text>
+                                    </LinearGradient>
+                                </TouchableOpacity>
+                            </View>
+                        </ScrollView>
+                    )}
                 </View>
             </View>
         </Modal>
@@ -190,7 +272,7 @@ export default function CertificateModal({ visible, onClose }: CertificateModalP
 const styles = StyleSheet.create({
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.8)',
+        backgroundColor: 'rgba(0,0,0,0.85)',
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -199,32 +281,97 @@ const styles = StyleSheet.create({
         height: height,
         justifyContent: 'center',
         alignItems: 'center',
-        paddingVertical: 40,
+        paddingTop: Platform.OS === 'ios' ? 60 : 40,
     },
     modalActions: {
         position: 'absolute',
-        top: 45,
-        right: 25,
-        zIndex: 20,
+        top: Platform.OS === 'ios' ? 50 : 30,
+        right: 20,
+        zIndex: 50,
     },
     closeButton: {
-        backgroundColor: 'rgba(255, 255, 255, 0.2)', // Semi-transparent white bg
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
         borderRadius: 20,
         padding: 8,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.4)',
     },
 
-    // Capture Container
+    // List Styles
+    listContainer: {
+        width: '90%',
+        backgroundColor: '#fff',
+        borderRadius: 20,
+        height: '70%',
+        padding: 20,
+    },
+    listHeaderTitle: {
+        fontSize: 22,
+        fontWeight: 'bold',
+        color: '#333',
+        marginBottom: 10,
+        textAlign: 'center',
+    },
+    listDivider: {
+        height: 1,
+        backgroundColor: '#eee',
+        marginBottom: 10,
+    },
+    listItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 15,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f0f0f0',
+    },
+    listIcon: {
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        backgroundColor: '#FFF8E1',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 15,
+    },
+    listContent: {
+        flex: 1,
+    },
+    listTitle: {
+        fontSize: 15,
+        fontWeight: 'bold',
+        color: '#333',
+        marginBottom: 4,
+    },
+    listSub: {
+        fontSize: 12,
+        color: '#888',
+    },
+    emptyView: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    emptyText: {
+        color: '#999',
+        marginTop: 10,
+        fontSize: 16,
+    },
+    backButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        alignSelf: 'flex-start',
+        marginLeft: 20,
+        marginBottom: 10,
+    },
+    backText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        marginLeft: 8,
+        fontSize: 16,
+    },
+
+    // Capture Container (Reuse)
     captureContainer: {
         marginBottom: 30,
         backgroundColor: 'transparent',
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.3,
-        shadowRadius: 20,
-        elevation: 10,
-        marginTop: 60, // Add margin top so it doesn't overlap with close button visually
     },
     outerBorder: {
         padding: 10,
@@ -291,10 +438,9 @@ const styles = StyleSheet.create({
         fontSize: 32,
         fontWeight: 'bold',
         color: '#2c3e50',
-        fontFamily: Platform.OS === 'ios' ? 'Didot' : 'serif',
+        fontFamily: 'PlayfairDisplay_700Bold_Italic',
         marginBottom: 15,
         textAlign: 'center',
-        fontStyle: 'italic',
     },
     bodyText: {
         fontSize: 14,
@@ -308,8 +454,16 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: '#C5A059',
         marginTop: 5,
-        marginBottom: 25,
+        marginBottom: 5, // Reduced to make space for ID
         letterSpacing: 1,
+        textAlign: 'center',
+    },
+    activityIdText: {
+        fontSize: 10,
+        color: '#999',
+        textAlign: 'center',
+        marginBottom: 20,
+        fontStyle: 'italic',
     },
 
     // Stats
@@ -338,13 +492,13 @@ const styles = StyleSheet.create({
         marginLeft: 8,
         color: '#555',
         fontWeight: '600',
-        fontSize: 13,
+        fontSize: 12,
     },
 
     // Footer
     footerRow: {
         flexDirection: 'row',
-        alignItems: 'flex-start', // Align top, control heights inside blocks
+        alignItems: 'flex-start',
         justifyContent: 'space-between',
         width: '100%',
         marginTop: 10,
@@ -352,41 +506,36 @@ const styles = StyleSheet.create({
     signatureBlock: {
         flex: 1,
         alignItems: 'center',
-        paddingHorizontal: 10,
+        paddingHorizontal: 5, // Reduced padding to give more width
     },
     signatureText: {
-        fontSize: 15,
-        fontFamily: 'DancingScript_700Bold',
+        fontSize: 24, // Larger for signature look
+        fontFamily: 'GreatVibes_400Regular',
         color: '#2c3e50',
-        marginBottom: 5,
-        height: 30,
-        textAlignVertical: 'center',
+        marginBottom: 0,
         textAlign: 'center',
-        fontWeight: 'bold', // Explicitly bold
-        fontStyle: 'italic', // Explicitly italic
+        minHeight: 35, // Ensure space is reserved even if empty momentarily
     },
     dateText: {
-        fontSize: 13,
-        fontFamily: 'Cinzel_700Bold',
+        fontSize: 14,
+        fontFamily: 'PlayfairDisplay_700Bold',
         color: '#2c3e50',
-        marginBottom: 5,
-        height: 30,
-        textAlignVertical: 'bottom',
+        marginBottom: 0,
         textAlign: 'center',
-        fontWeight: 'bold', // Explicitly bold
-        // No italic
+        fontWeight: 'bold',
+        minHeight: 35,
     },
     line: {
         height: 1,
         backgroundColor: '#333',
-        width: '100%', // Full width of the padding-constrained block
+        width: '100%',
         marginBottom: 5,
     },
     signLabel: {
-        fontSize: 11,
+        fontSize: 8, // Smaller to prevent wrap
         color: '#888',
         textTransform: 'uppercase',
-        letterSpacing: 1,
+        letterSpacing: 0.5, // Reduced spacing
         textAlign: 'center',
     },
     sealContainer: {

@@ -10,7 +10,6 @@ import {
     KeyboardAvoidingView,
     Platform,
     Alert,
-    Keyboard,
     ActivityIndicator,
     Modal,
     FlatList
@@ -21,38 +20,41 @@ import { useRouter } from 'expo-router';
 import { useAuth } from './context/AuthContext';
 import * as ImagePicker from 'expo-image-picker';
 
-
-export default function StudentProfileSettingsScreen() {
+export default function OrgProfileSettingsScreen() {
     const router = useRouter();
     const { token, updateUser } = useAuth();
 
     // Data State
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [studentData, setStudentData] = useState<any>(null); // Store full object for reference
+    const [orgData, setOrgData] = useState<any>(null);
 
     // Form Fields
-    const [fullName, setFullName] = useState('');
-    const [phoneNumber, setPhoneNumber] = useState('');
-    const [gender, setGender] = useState('');
-    const [academicYear, setAcademicYear] = useState('');
-    const [faculty, setFaculty] = useState('');
-    const [dateOfBirth, setDateOfBirth] = useState('');
+    const [representativeName, setRepresentativeName] = useState('');
+    const [representativeEmail, setRepresentativeEmail] = useState('');
+    const [representativePhoneNumber, setRepresentativePhoneNumber] = useState('');
     const [bio, setBio] = useState('');
+    const [orgType, setOrgType] = useState('');
 
-    // Read-only fields
+    // Read-only / Display fields
+    const [organizationName, setOrganizationName] = useState('');
     const [email, setEmail] = useState('');
-    const [mssv, setMssv] = useState('');
     const [avatarUrl, setAvatarUrl] = useState('');
 
-    // Picker States
-    const [showDatePicker, setShowDatePicker] = useState(false);
-    const [date, setDate] = useState(new Date());
-
+    // Dropdown State
     const [modalVisible, setModalVisible] = useState(false);
-    const [modalType, setModalType] = useState<'GENDER' | 'YEAR' | 'DATE_YEAR' | 'DATE_MONTH' | 'DATE_DAY' | null>(null);
-    const [modalData, setModalData] = useState<string[]>([]);
-    const [modalTitle, setModalTitle] = useState('');
+    const orgTypes = [
+        { label: 'University Department', value: 'UNIVERSITY_DEPARTMENT' },
+        { label: 'Student Union', value: 'STUDENT_UNION' },
+        { label: 'Club', value: 'CLUB' },
+        { label: 'NGO', value: 'NGO' },
+        { label: 'Company', value: 'COMPANY' },
+        { label: 'Government', value: 'GOVERNMENT' },
+        { label: 'Charity', value: 'CHARITY' },
+        { label: 'Foundation', value: 'FOUNDATION' },
+        { label: 'Community Group', value: 'COMMUNITY_GROUP' },
+        { label: 'Other', value: 'OTHER' }
+    ];
 
     useEffect(() => {
         if (token) {
@@ -63,7 +65,7 @@ export default function StudentProfileSettingsScreen() {
     const fetchProfile = async () => {
         setLoading(true);
         try {
-            const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/students/my-profile', {
+            const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/organization/profile', {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -71,23 +73,20 @@ export default function StudentProfileSettingsScreen() {
             const json = await response.json();
             if (json.success) {
                 const data = json.data;
-                setStudentData(data);
+                setOrgData(data);
 
                 // Populate fields
-                setFullName(data.fullName || '');
-                setPhoneNumber(data.phoneNumber || '');
-                setGender(data.gender || '');
-                setAcademicYear(data.academicYear || '');
-                setFaculty(data.faculty || '');
-                setDateOfBirth(data.dateOfBirth || '');
-                setBio(data.bio || '');
+                setOrganizationName(data.organizationName || '');
                 setEmail(data.email || '');
-                setMssv(data.mssv || '');
                 setAvatarUrl(data.avatarUrl || '');
+                setOrgType(data.type || '');
 
-                if (data.dateOfBirth) {
-                    setDate(new Date(data.dateOfBirth));
-                }
+                // Editable fields
+                setRepresentativeName(data.representativeName || '');
+                setRepresentativeEmail(data.representativeEmail || '');
+                setRepresentativePhoneNumber(data.representativePhoneNumber || '');
+                setBio(data.bio || '');
+
             } else {
                 Alert.alert("Error", "Failed to fetch profile data");
             }
@@ -100,21 +99,17 @@ export default function StudentProfileSettingsScreen() {
     };
 
     const handleSave = async () => {
-        if (!studentData?.studentId) return;
-
         setSaving(true);
         try {
             const body = {
-                fullName,
-                phoneNumber,
-                gender,
-                academicYear,
-                faculty,
-                dateOfBirth,
-                bio
+                representativeName,
+                representativeEmail,
+                representativePhoneNumber,
+                bio,
+                organizationType: orgType
             };
 
-            const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/students/update-profile', {
+            const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/organization/profile', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -124,12 +119,24 @@ export default function StudentProfileSettingsScreen() {
             });
 
             const json = await response.json();
-            if (response.ok && json.success) {
+            // console.log("DEBUG: Update Profile Response:", JSON.stringify(json));
+
+            if (json.success) {
                 Alert.alert("Success", "Profile updated successfully!", [
                     { text: "OK", onPress: () => router.back() }
                 ]);
             } else {
-                Alert.alert("Error", json.message || "Failed to update profile");
+                let errorMessage = json.message || "Failed to update profile";
+                if (json.data && typeof json.data === 'object' && !Array.isArray(json.data)) {
+                    // Extract validation errors
+                    const validationErrors = Object.entries(json.data)
+                        .map(([key, msg]) => `• ${key}: ${msg}`)
+                        .join('\n');
+                    if (validationErrors) {
+                        errorMessage += `\n${validationErrors}`;
+                    }
+                }
+                Alert.alert("Error", errorMessage);
             }
         } catch (error) {
             console.error("Update Profile Error:", error);
@@ -201,71 +208,6 @@ export default function StudentProfileSettingsScreen() {
         }
     };
 
-    const [tempDate, setTempDate] = useState({ year: '', month: '', day: '' });
-
-    const openDatePicker = () => {
-        setTempDate({ year: '', month: '', day: '' });
-        setModalType('DATE_YEAR');
-        setModalTitle('Select Year of Birth');
-        const currentYear = new Date().getFullYear();
-        const years = [];
-        for (let i = currentYear; i >= 1950; i--) {
-            years.push(`${i}`);
-        }
-        setModalData(years);
-        setModalVisible(true);
-    };
-
-    const openGenderPicker = () => {
-        setModalType('GENDER');
-        setModalTitle('Select Gender');
-        setModalData(['MALE', 'FEMALE', 'OTHER']);
-        setModalVisible(true);
-    };
-
-    const openYearPicker = () => {
-        setModalType('YEAR');
-        setModalTitle('Select Academic Year');
-        const currentYear = new Date().getFullYear();
-        const years = [];
-        for (let i = currentYear - 6; i <= currentYear + 2; i++) {
-            years.push(`${i}`);
-        }
-        setModalData(years.reverse());
-        setModalVisible(true);
-    };
-
-    const handleModalSelect = (item: string) => {
-        if (modalType === 'GENDER') {
-            setGender(item);
-            setModalVisible(false);
-        } else if (modalType === 'YEAR') {
-            setAcademicYear(item);
-            setModalVisible(false);
-        } else if (modalType === 'DATE_YEAR') {
-            setTempDate(prev => ({ ...prev, year: item }));
-            setModalType('DATE_MONTH');
-            setModalTitle('Select Month of Birth');
-            const months = Array.from({ length: 12 }, (_, i) => `${i + 1}`);
-            setModalData(months);
-        } else if (modalType === 'DATE_MONTH') {
-            setTempDate(prev => ({ ...prev, month: item.padStart(2, '0') }));
-            setModalType('DATE_DAY');
-            setModalTitle('Select Day of Birth');
-            // Calculate days in month
-            const year = parseInt(tempDate.year || new Date().getFullYear().toString());
-            const month = parseInt(item);
-            const daysInMonth = new Date(year, month, 0).getDate();
-            const days = Array.from({ length: daysInMonth }, (_, i) => `${i + 1}`);
-            setModalData(days);
-        } else if (modalType === 'DATE_DAY') {
-            const day = item.padStart(2, '0');
-            const fullDate = `${tempDate.year}-${tempDate.month}-${day}`;
-            setDateOfBirth(fullDate);
-            setModalVisible(false);
-        }
-    };
-
     if (loading) {
         return (
             <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -294,7 +236,7 @@ export default function StudentProfileSettingsScreen() {
                     {/* Avatar Display Only */}
                     <View style={styles.avatarContainer}>
                         <Image
-                            source={avatarUrl ? { uri: avatarUrl } : require('../assets/images/student_image.png')}
+                            source={avatarUrl ? { uri: avatarUrl } : require('./(tabs-org)/../../assets/images/org_image.png')}
                             style={styles.avatar}
                         />
                         <TouchableOpacity style={styles.editAvatarButton} onPress={handlePickImage} disabled={uploadingAvatar}>
@@ -306,26 +248,26 @@ export default function StudentProfileSettingsScreen() {
                         </TouchableOpacity>
                     </View>
 
-                    {/* Section: Personal Details */}
-                    <Text style={styles.sectionTitle}>Personal Details</Text>
+                    {/* Section: Organization Details */}
+                    <Text style={styles.sectionTitle}>Organization Details</Text>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Full Name</Text>
+                        <Text style={styles.label}>Organization Name (Read-only)</Text>
                         <TextInput
-                            style={styles.input}
-                            value={fullName}
-                            onChangeText={setFullName}
-                            placeholder="Enter full name"
+                            style={[styles.input, styles.readOnlyInput]}
+                            value={organizationName}
+                            editable={false}
                         />
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Student ID (Read-only)</Text>
-                        <TextInput
-                            style={[styles.input, styles.readOnlyInput]}
-                            value={mssv}
-                            editable={false}
-                        />
+                        <Text style={styles.label}>Organization Type</Text>
+                        <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.pickerButton}>
+                            <Text style={styles.pickerText}>
+                                {orgType ? orgTypes.find(t => t.value === orgType)?.label || orgType : 'Select Organization Type'}
+                            </Text>
+                            <Ionicons name="chevron-down" size={20} color="#666" />
+                        </TouchableOpacity>
                     </View>
 
                     <View style={styles.inputGroup}>
@@ -338,53 +280,49 @@ export default function StudentProfileSettingsScreen() {
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Phone Number</Text>
-                        <TextInput
-                            style={styles.input}
-                            value={phoneNumber}
-                            onChangeText={setPhoneNumber}
-                            keyboardType="phone-pad"
-                            placeholder="Enter phone number"
-                        />
-                    </View>
-
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Date of Birth</Text>
-                        <TouchableOpacity onPress={openDatePicker} style={styles.pickerButton}>
-                            <Text style={styles.pickerText}>{dateOfBirth || 'Select Date'}</Text>
-                            <Ionicons name="calendar-outline" size={20} color="#666" />
-                        </TouchableOpacity>
-                    </View>
-
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Gender</Text>
-                        <TouchableOpacity onPress={openGenderPicker} style={styles.pickerButton}>
-                            <Text style={styles.pickerText}>{gender || 'Select Gender'}</Text>
-                            <Ionicons name="chevron-down" size={20} color="#666" />
-                        </TouchableOpacity>
-                    </View>
-
-                    {/* Section: Education Details */}
-                    <Text style={styles.sectionTitle}>Education Details</Text>
-
-                    {/* Faculty Removed */}
-
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Academic Year</Text>
-                        <TouchableOpacity onPress={openYearPicker} style={styles.pickerButton}>
-                            <Text style={styles.pickerText}>{academicYear || 'Select Year'}</Text>
-                            <Ionicons name="chevron-down" size={20} color="#666" />
-                        </TouchableOpacity>
-                    </View>
-
-                    <View style={styles.inputGroup}>
                         <Text style={styles.label}>Bio</Text>
                         <TextInput
                             style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
                             value={bio}
                             onChangeText={setBio}
-                            placeholder="Tell something about yourself..."
+                            placeholder="Brief description of the organization..."
                             multiline
+                        />
+                    </View>
+
+                    {/* Section: Representative Info */}
+                    <Text style={styles.sectionTitle}>Representative Information</Text>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Representative Name</Text>
+                        <TextInput
+                            style={styles.input}
+                            value={representativeName}
+                            onChangeText={setRepresentativeName}
+                            placeholder="Enter representative name"
+                        />
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Representative Email</Text>
+                        <TextInput
+                            style={styles.input}
+                            value={representativeEmail}
+                            onChangeText={setRepresentativeEmail}
+                            placeholder="Enter representative email"
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                        />
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Representative Phone</Text>
+                        <TextInput
+                            style={styles.input}
+                            value={representativePhoneNumber}
+                            onChangeText={setRepresentativePhoneNumber}
+                            placeholder="Enter phone number"
+                            keyboardType="phone-pad"
                         />
                     </View>
 
@@ -408,9 +346,7 @@ export default function StudentProfileSettingsScreen() {
                 </ScrollView>
             </KeyboardAvoidingView>
 
-
-
-            {/* Custom Selection Modal */}
+            {/* Global Modal for Org Type Selection */}
             <Modal
                 transparent={true}
                 visible={modalVisible}
@@ -419,17 +355,20 @@ export default function StudentProfileSettingsScreen() {
             >
                 <TouchableOpacity style={styles.modalOverlay} onPress={() => setModalVisible(false)}>
                     <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>{modalTitle}</Text>
+                        <Text style={styles.modalTitle}>Select Organization Type</Text>
                         <FlatList
-                            data={modalData}
-                            keyExtractor={(item) => item}
+                            data={orgTypes}
+                            keyExtractor={(item) => item.value}
                             renderItem={({ item }) => (
                                 <TouchableOpacity
                                     style={styles.modalItem}
-                                    onPress={() => handleModalSelect(item)}
+                                    onPress={() => {
+                                        setOrgType(item.value);
+                                        setModalVisible(false);
+                                    }}
                                 >
-                                    <Text style={styles.modalItemText}>{item}</Text>
-                                    {((modalType === 'GENDER' && gender === item) || (modalType === 'YEAR' && academicYear === item)) && (
+                                    <Text style={styles.modalItemText}>{item.label}</Text>
+                                    {orgType === item.value && (
                                         <Ionicons name="checkmark" size={20} color="#2196F3" />
                                     )}
                                 </TouchableOpacity>

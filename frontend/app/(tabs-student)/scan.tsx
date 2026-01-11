@@ -1,20 +1,66 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, Alert, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, Alert, Dimensions, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useAuth } from '../context/AuthContext';
+import { captureRef } from 'react-native-view-shot';
 
 // Get screen width for responsive sizing
 const { width } = Dimensions.get('window');
 
 export default function StudentScanScreen() {
     const router = useRouter();
+    const { token, user, logout } = useAuth();
+    const [studentInfo, setStudentInfo] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+    const viewRef = useRef<View>(null);
+
+    useEffect(() => {
+        fetchMyQr();
+    }, [token]);
+
+    const fetchMyQr = async () => {
+        if (!token) return;
+        try {
+            setLoading(true);
+            const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/students/my-qr', {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            const json = await response.json();
+
+            // Check for Ban
+            if (response.status === 403 || (json.message && json.message.toLowerCase().includes("banned"))) {
+                Alert.alert("Account Suspended", "Your account has been banned. You will be logged out.");
+                await logout();
+                router.replace('/login');
+                return;
+            }
+
+            if (json.success || json.code === 0) {
+                setStudentInfo(json.data);
+            } else {
+                Alert.alert("Error", json.message || "Failed to load QR code");
+            }
+        } catch (error) {
+            console.error("Fetch QR Error:", error);
+            Alert.alert("Error", "Failed to load QR code");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     // Helper to get QR URL
-    const getQrUrl = () => 'https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=Student:SarahTaylor&color=1D1D1D&bgcolor=FFFFFF';
+    const getQrUrl = () => {
+        if (!studentInfo?.qrCodeData) return null;
+        return `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(studentInfo.qrCodeData)}&color=1D1D1D&bgcolor=FFFFFF`;
+    };
 
     const handleShare = async () => {
         try {
@@ -24,42 +70,38 @@ export default function StudentScanScreen() {
                 return;
             }
 
-            const qrUrl = getQrUrl();
-            const fs = FileSystem as any;
-            const fileUri = (fs.cacheDirectory || fs.documentDirectory) + 'share-qr-code.png';
+            if (!viewRef.current) return;
 
-            // Download image to share
-            const { uri } = await fs.downloadAsync(qrUrl, fileUri);
+            const uri = await captureRef(viewRef, {
+                format: 'png',
+                quality: 1,
+            });
 
             await Sharing.shareAsync(uri);
         } catch (error: any) {
+            console.log("Share error:", error);
             Alert.alert("Error", error.message);
         }
     };
 
     const handleSave = async () => {
         try {
-            const { status } = await MediaLibrary.requestPermissionsAsync();
+            const { status } = await MediaLibrary.requestPermissionsAsync(true);
             if (status !== 'granted') {
                 Alert.alert("Permission required", "Please grant permission to save the QR code.");
                 return;
             }
 
-            const qrUrl = getQrUrl();
+            if (!viewRef.current) return;
 
-            // Use cacheDirectory for temporary storage before saving to gallery
-            const fs = FileSystem as any;
-            const fileUri = (fs.cacheDirectory || fs.documentDirectory) + 'my-qr-code.png';
+            const uri = await captureRef(viewRef, {
+                format: 'png',
+                quality: 1,
+            });
 
-            console.log("Downloading to:", fileUri);
-
-            // Download
-            const { uri } = await fs.downloadAsync(qrUrl, fileUri);
-            console.log("Downloaded to:", uri);
-
-            // Save
+            console.log("Captured URI:", uri);
             await MediaLibrary.createAssetAsync(uri);
-            Alert.alert("Success", "QR Code saved to gallery!");
+            Alert.alert("Success", "QR Card saved to gallery!");
 
         } catch (error: any) {
             console.log("Save error:", error);
@@ -84,23 +126,51 @@ export default function StudentScanScreen() {
                     <View style={{ width: 40 }} />
                 </View>
 
-                {/* Profile Section */}
-                <View style={styles.profileSection}>
-                    <View style={styles.avatarContainer}>
-                        <Image source={require('../../assets/images/student_image.png')} style={styles.avatar} />
+                {/* Wrapper for Capture - styled to look like a card */}
+                <View
+                    ref={viewRef}
+                    collapsable={false}
+                    style={{
+                        backgroundColor: '#fff',
+                        alignItems: 'center',
+                        padding: 30,
+                        borderRadius: 20,
+                        marginBottom: 20,
+                        // Add shadow/border for the capture view itself if we want it to look "framed" in the saved image
+                        // or just keep it clean white. Let's add a subtle border for the "Card" look.
+                        borderWidth: 8,
+                        borderColor: '#FF4058',
+                    }}
+                >
+                    {/* Profile Section */}
+                    <View style={styles.profileSection}>
+                        <View style={styles.avatarContainer}>
+                            <Image
+                                source={studentInfo?.avatarUrl ? { uri: studentInfo.avatarUrl } : require('../../assets/images/student_image.png')}
+                                style={styles.avatar}
+                            />
+                        </View>
+                        <Text style={styles.studentName}>{studentInfo?.fullName || user?.name || "Student Name"}</Text>
+                        {studentInfo?.mssv && <Text style={{ color: '#666', marginTop: 4 }}>{studentInfo.mssv}</Text>}
                     </View>
-                    <Text style={styles.studentName}>Sarah Taylor</Text>
-                </View>
 
-                {/* QR Code Card */}
-                <View style={styles.qrCard}>
+                    {/* QR Code Section */}
                     <View style={styles.qrContainer}>
-                        {/* Using a reliable public API for QR Code Display */}
-                        <Image
-                            source={{ uri: getQrUrl() }}
-                            style={styles.qrImage}
-                        />
+                        {loading ? (
+                            <ActivityIndicator size="large" color="#FF4058" style={{ height: 200 }} />
+                        ) : studentInfo?.qrCodeData ? (
+                            <Image
+                                source={{ uri: getQrUrl()! }}
+                                style={styles.qrImage}
+                            />
+                        ) : (
+                            <View style={[styles.qrImage, { justifyContent: 'center', alignItems: 'center' }]}>
+                                <Text style={{ color: '#999' }}>Failed to load QR</Text>
+                            </View>
+                        )}
                     </View>
+
+                    <Text style={{ marginTop: 10, color: '#FF4058', fontWeight: 'bold' }}>STUDENT PASS</Text>
                 </View>
 
                 {/* Instructions */}

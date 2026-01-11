@@ -3,7 +3,7 @@ import React from 'react';
 import { Platform, View } from 'react-native';
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { FontAwesome6 } from '@expo/vector-icons';
+import { FontAwesome6, Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function StudentTabLayout() {
@@ -45,14 +45,14 @@ export default function StudentTabLayout() {
         name="home"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={24} name="house.fill" color={color} />,
+          tabBarIcon: ({ color }) => <Ionicons size={24} name="home" color={color} />,
         }}
       />
       <Tabs.Screen
         name="activity"
         options={{
           title: 'Activity',
-          tabBarIcon: ({ color }) => <IconSymbol size={24} name="doc.text.fill" color={color} />,
+          tabBarIcon: ({ color }) => <Ionicons size={24} name="document-text" color={color} />,
         }}
       />
       <Tabs.Screen
@@ -76,7 +76,7 @@ export default function StudentTabLayout() {
               borderWidth: 1,
               borderColor: '#eee'
             }}>
-              <IconSymbol size={32} name="qrcode.viewfinder" color="#000" />
+              <Ionicons size={30} name="qr-code-outline" color="#000" />
             </View>
           ),
           tabBarLabel: () => null, // Hide label for center button

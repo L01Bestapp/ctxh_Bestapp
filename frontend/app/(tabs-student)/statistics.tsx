@@ -1,19 +1,41 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Dimensions } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Dimensions, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import CertificateModal from '../components/CertificateModal';
+import { useAuth } from '../context/AuthContext';
 
 const { width } = Dimensions.get('window');
 
-const STATS_DATA = [
-    { title: 'Days', value: '10', icon: 'calendar-month', type: 'mci', color: '#FF9800' },
-    { title: 'Certificates', value: '12', icon: 'certificate', type: 'fa5', color: '#2196F3' },
-    { title: 'Activity Joined', value: '12', icon: 'account-group', type: 'mci', color: '#E91E63' },
-    { title: 'Rank', value: '#15', sub: '/ 500', icon: 'trophy', type: 'ion', color: '#FFC107' }, // Adjusted color
-];
+// Interface for API Response
+interface StudentDetail {
+    studentId: number;
+    email: string;
+    phoneNumber: string;
+    fullName: string;
+    mssv: string;
+    academicYear: string;
+    faculty: string;
+    totalCtxhDays: number;
+    dateOfBirth: string;
+    gender: string;
+    avatarUrl: string;
+    bio: string;
+    qrCodeData: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+interface StatItem {
+    title: string;
+    value: string;
+    icon: string;
+    type: 'ion' | 'fa5' | 'mci';
+    color: string;
+    sub?: string;
+}
 
 const ACHIEVEMENTS_DATA = [
     {
@@ -41,19 +63,106 @@ const ACHIEVEMENTS_DATA = [
 
 export default function StudentStatisticsScreen() {
     const router = useRouter();
+    const { user, token } = useAuth();
 
     const [modalVisible, setModalVisible] = useState(false);
+    const [certificates, setCertificates] = useState<any[]>([]);
+    const [studentDetail, setStudentDetail] = useState<any>(null);
+    const [refreshing, setRefreshing] = useState(false);
 
-    const renderIcon = (item: any) => {
-        if (item.type === 'ion') return <Ionicons name={item.icon} size={24} color={item.color} />;
+    // Fetch data on mount
+    React.useEffect(() => {
+        if (user?.id && token) {
+            fetchCertificates();
+            fetchStudentDetail();
+        }
+    }, [user, token]);
+
+    const fetchStudentDetail = async () => {
+        try {
+            const response = await fetch(`https://marg-astonishing-matthias.ngrok-free.dev/api/v1/students/my-profile`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) {
+                console.log("Fetch Student Detail Failed:", response.status);
+                return;
+            }
+
+            const json = await response.json();
+            if (json.success) {
+                setStudentDetail(json.data);
+            }
+        } catch (error) {
+            console.error("Fetch Student Error:", error);
+        }
+    };
+
+    const fetchCertificates = async () => {
+        try {
+            const response = await fetch(`https://marg-astonishing-matthias.ngrok-free.dev/api/v1/students/certificates?studentId=${user?.id}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            const json = await response.json();
+            if (json.success) {
+                setCertificates(json.data);
+            }
+        } catch (error) {
+            console.error("Fetch Certs Error:", error);
+        }
+    };
+
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await Promise.all([fetchStudentDetail(), fetchCertificates()]);
+        setRefreshing(false);
+    }, [token, user?.id]);
+
+    const renderIcon = (item: StatItem) => {
+        if (item.type === 'ion') return <Ionicons name={item.icon as any} size={24} color={item.color} />;
         if (item.type === 'fa5') return <FontAwesome5 name={item.icon} size={20} color={item.color} />;
-        if (item.type === 'mci') return <MaterialCommunityIcons name={item.icon} size={26} color={item.color} />;
+        if (item.type === 'mci') return <MaterialCommunityIcons name={item.icon as any} size={26} color={item.color} />;
         return null;
     };
 
+    // Calculate Dynamic Stats
+    const stats: StatItem[] = [
+        {
+            title: 'Days',
+            value: studentDetail?.totalCtxhDays ? studentDetail.totalCtxhDays.toString() : '0',
+            icon: 'calendar-month',
+            type: 'mci',
+            color: '#FF9800'
+        },
+        {
+            title: 'Certificates',
+            value: certificates.length.toString(),
+            icon: 'certificate',
+            type: 'fa5',
+            color: '#2196F3'
+        },
+        {
+            title: 'Activity Joined',
+            value: certificates.length.toString(),
+            icon: 'account-group',
+            type: 'mci',
+            color: '#E91E63'
+        }
+    ];
+
     return (
         <View style={styles.container}>
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <ScrollView
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#FF4058"]} />
+                }
+            >
 
                 {/* Modern Gradient Header */}
                 <LinearGradient
@@ -65,16 +174,23 @@ export default function StudentStatisticsScreen() {
                     <SafeAreaView style={{ flex: 1, alignItems: 'center' }}>
                         <View style={styles.headerContent}>
                             <View style={styles.avatarContainer}>
-                                <Image
-                                    source={require('../../assets/images/student_image.png')}
-                                    style={styles.avatar}
-                                />
+                                <TouchableOpacity onPress={() => router.push('/(tabs-student)/profile')}>
+                                    <Image
+                                        source={studentDetail?.avatarUrl ? { uri: studentDetail.avatarUrl } : require('../../assets/images/student_image.png')}
+                                        style={styles.avatar}
+                                    />
+                                </TouchableOpacity>
                                 <View style={styles.badge}>
                                     <Ionicons name="shield-checkmark" size={14} color="#fff" />
                                 </View>
                             </View>
-                            <Text style={styles.userName}>Sarah Taylor</Text>
-                            <Text style={styles.userEmail}>sarah.taylor@student.hcmut.edu.vn</Text>
+                            <Text style={styles.userName}>{studentDetail?.fullName || user?.name || 'Loading...'}</Text>
+                            <Text style={styles.userEmail}>{studentDetail?.email || user?.email || 'N/A'}</Text>
+                            <View style={{ flexDirection: 'row', marginTop: 5, gap: 10 }}>
+                                <Text style={styles.userInfoText}>MSSV: {studentDetail?.mssv || '...'}</Text>
+                                <Text style={styles.userInfoText}>|</Text>
+                                <Text style={styles.userInfoText}>Phone: {studentDetail?.phoneNumber || 'N/A'}</Text>
+                            </View>
                         </View>
                     </SafeAreaView>
                 </LinearGradient>
@@ -88,7 +204,7 @@ export default function StudentStatisticsScreen() {
                     </View>
 
                     <View style={styles.statsGrid}>
-                        {STATS_DATA.map((item, index) => (
+                        {stats.map((item, index) => (
                             <View key={index} style={styles.statCard}>
                                 <View style={[styles.statIconContainer, { backgroundColor: item.color + '15' }]}>
                                     {renderIcon(item)}
@@ -97,7 +213,7 @@ export default function StudentStatisticsScreen() {
                                     <Text style={styles.statLabel}>{item.title}</Text>
                                     <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
                                         <Text style={styles.statValue}>{item.value}</Text>
-                                        {item.sub && <Text style={styles.statSub}>{item.sub}</Text>}
+                                        {(item as any).sub && <Text style={styles.statSub}>{(item as any).sub}</Text>}
                                     </View>
                                 </View>
                             </View>
@@ -133,7 +249,7 @@ export default function StudentStatisticsScreen() {
                             style={styles.buttonGradient}
                         >
                             <MaterialCommunityIcons name="certificate-outline" size={24} color="#fff" />
-                            <Text style={styles.certificateButtonText}>View Certificate</Text>
+                            <Text style={styles.certificateButtonText}>View Certificates</Text>
                         </LinearGradient>
                     </TouchableOpacity>
 
@@ -142,7 +258,11 @@ export default function StudentStatisticsScreen() {
             </ScrollView>
 
             {/* Certificate Modal */}
-            <CertificateModal visible={modalVisible} onClose={() => setModalVisible(false)} />
+            <CertificateModal
+                visible={modalVisible}
+                onClose={() => setModalVisible(false)}
+                certificates={certificates}
+            />
         </View>
     );
 }
@@ -212,6 +332,11 @@ const styles = StyleSheet.create({
         color: 'rgba(255,255,255,0.9)',
         fontWeight: '500',
     },
+    userInfoText: {
+        fontSize: 13,
+        color: 'rgba(255,255,255,0.7)',
+        fontWeight: '500',
+    },
 
     // Main Content (No Overlap)
     mainContent: {
@@ -244,44 +369,50 @@ const styles = StyleSheet.create({
     // Stats Grid
     statsGrid: {
         flexDirection: 'row',
-        flexWrap: 'wrap',
         justifyContent: 'space-between',
-        paddingHorizontal: 20,
+        paddingHorizontal: 15,
+        marginBottom: 10,
     },
     statCard: {
-        width: (width - 55) / 2,
+        width: (width - 50) / 3, // 3 items per row
         backgroundColor: '#fff',
-        borderRadius: 20,
-        padding: 15,
-        marginBottom: 15,
+        borderRadius: 16,
+        paddingVertical: 12, // Reduced vertical padding
+        paddingHorizontal: 4,
+        alignItems: 'center',
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-        elevation: 3,
-        justifyContent: 'space-between',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 5,
+        elevation: 2,
+        marginBottom: 0,
+        minHeight: 100, // flexible height
+        justifyContent: 'flex-start', // Allow content to stack
     },
     statIconContainer: {
-        width: 42,
-        height: 42,
-        borderRadius: 14,
+        width: 36, // Smaller icon container
+        height: 36,
+        borderRadius: 12,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 12,
+        marginBottom: 8,
     },
     statInfo: {
-        alignItems: 'flex-start',
+        alignItems: 'center',
+        width: '100%',
     },
     statLabel: {
-        fontSize: 13,
+        fontSize: 11, // Smaller font
         color: '#888',
         marginBottom: 4,
         fontWeight: '600',
+        textAlign: 'center',
     },
     statValue: {
-        fontSize: 22,
+        fontSize: 18, // Slightly smaller value
         fontWeight: 'bold',
         color: '#333',
+        textAlign: 'center',
     },
     statSub: {
         fontSize: 12,

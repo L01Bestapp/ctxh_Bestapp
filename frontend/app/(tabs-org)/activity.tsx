@@ -1,58 +1,89 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, TextInput, ScrollView, TouchableOpacity, FlatList, Alert } from 'react-native';
+import { View, Text, StyleSheet, Image, TextInput, ScrollView, TouchableOpacity, FlatList, Alert, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { useAuth } from '../context/AuthContext';
+import HeaderAvatar from '../components/HeaderAvatar';
 
-// Mock Data for "My Activities" (Managed by Org)
-const INITIAL_ACTIVITIES = [
-    {
-        id: '1',
-        title: 'Blood Donation Drive',
-        organizer: 'Youth Union, Faculty of CS',
-        description: 'Donate blood, save lives - your kindness matters.',
-        time: 'Oct 20, 2025 - 08:00 AM',
-        location: 'Hall B1, HCMUT',
-        status: 'Upcoming',
-        slots: '15/20',
-        image: require('../../assets/images/ob1.png'),
-        deadline: 'Oct 22',
-        ctxh: '+2 volunteer hours',
-        createdAt: '2025-09-01T10:00:00Z',
-        type: 'Volunteer'
-    },
-    {
-        id: '2',
-        title: 'Campus Green Day',
-        organizer: 'Youth Union, Faculty of CS',
-        description: "Let's plant new trees, clean up the yard, and spread positive energy.",
-        time: 'Oct 20, 2025 - 07:30 AM',
-        location: 'Hall B1, HCMUT',
-        status: 'Upcoming',
-        slots: '13/20',
-        image: require('../../assets/images/ob3.png'),
-        deadline: 'Oct 19',
-        ctxh: '+2 volunteer hours',
-        createdAt: '2025-09-15T08:30:00Z',
-        type: 'Volunteer'
-    }
-];
+// API Interface matching schema for get-all-activity-for-organization
+interface Activity {
+    activityId: number;
+    title: string;
+    shortDescription: string;
+    imageUrl?: string;
+    category: string;
+    registrationDeadline: string;
+    theNumberOfCtxhDay: number;
+    startDateTime: string;
+    endDateTime: string;
+    address: string;
+    maxParticipants: number;
+    approvedParticipants: number;
+    remainingSlots: number;
+    registrationState: string;
+    activityStatus: string;
+    createdAt: string;
+}
 
 export default function OrgActivityScreen() {
     const router = useRouter();
-    // Move activities to state to allow manipulation (delete)
-    const [activities, setActivities] = React.useState(INITIAL_ACTIVITIES);
+    const { token, user } = useAuth();
+
+    // API Data State
+    const [activities, setActivities] = React.useState<Activity[]>([]);
+    const [loading, setLoading] = React.useState(true);
 
     const [searchQuery, setSearchQuery] = React.useState('');
-    const [statusFilter, setStatusFilter] = React.useState<'All' | 'Upcoming' | 'Ongoing' | 'Ended'>('All');
+    const [statusFilter, setStatusFilter] = React.useState<'All' | 'UPCOMING' | 'ONGOING' | 'ENDED'>('All');
     const [sortOrder, setSortOrder] = React.useState<'newest' | 'oldest'>('newest');
-    const [filterType, setFilterType] = React.useState<'All' | 'Volunteer' | 'Workshop'>('All');
+    const [filterType, setFilterType] = React.useState<'All' | 'EDUCATION_SUPPORT' | 'SOCIAL_SUPPORT' | 'COMMUNITY_SERVICE' | 'ENVIRONMENT' | 'HEALTH_CAMPAIGN' | 'EVENT_SUPPORT' | 'FUNDRAISING' | 'OTHER'>('All');
     const [showFilterDropdown, setShowFilterDropdown] = React.useState(false);
 
+    const [refreshing, setRefreshing] = React.useState(false);
+
+    // Fetch API with Auto-Refresh on Focus
+    useFocusEffect(
+        React.useCallback(() => {
+            fetchActivities();
+        }, [token])
+    );
+
+    const fetchActivities = async () => {
+        if (!token) return;
+
+        try {
+            const url = `https://marg-astonishing-matthias.ngrok-free.dev/api/v1/activities/get-all-activity-for-organization?t=${Date.now()}`;
+            const response = await fetch(url, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            const json = await response.json();
+
+            if (json.success && json.data) {
+                setActivities(json.data);
+            }
+        } catch (error) {
+            console.error("ORG_ACTIVITY: Failed to fetch activities:", error);
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    };
+
+    const onRefresh = React.useCallback(() => {
+        setRefreshing(true);
+        fetchActivities();
+    }, [token]);
+
+
     // Counts (Dynamic based on current state)
-    const upcomingCount = activities.filter(a => a.status === 'Upcoming').length;
-    const ongoingCount = activities.filter(a => a.status === 'Ongoing').length;
-    const endedCount = activities.filter(a => a.status === 'Ended').length;
+    // Note: API returns uppercase statuses usually, ensuring match
+    const upcomingCount = activities.filter(a => a.activityStatus === 'UPCOMING').length;
+    const ongoingCount = activities.filter(a => a.activityStatus === 'ONGOING').length;
+    const endedCount = activities.filter(a => a.activityStatus === 'ENDED').length;
 
     const filteredActivities = React.useMemo(() => {
         let result = activities;
@@ -61,19 +92,18 @@ export default function OrgActivityScreen() {
         if (searchQuery) {
             const lowerQuery = searchQuery.toLowerCase();
             result = result.filter(item =>
-                item.title.toLowerCase().includes(lowerQuery) ||
-                item.organizer.toLowerCase().includes(lowerQuery)
+                (item.title || '').toLowerCase().includes(lowerQuery)
             );
         }
 
         // 2. Filter by Type
         if (filterType !== 'All') {
-            result = result.filter(item => item.type === filterType);
+            result = result.filter(item => item.category === filterType);
         }
 
         // 3. Filter by Status
         if (statusFilter !== 'All') {
-            result = result.filter(item => item.status === statusFilter);
+            result = result.filter(item => item.activityStatus === statusFilter);
         }
 
         // 4. Sort by Date Posted (createdAt)
@@ -90,16 +120,16 @@ export default function OrgActivityScreen() {
         setSortOrder(prev => prev === 'newest' ? 'oldest' : 'newest');
     };
 
-    const selectFilter = (type: 'All' | 'Volunteer' | 'Workshop') => {
+    const selectFilter = (type: typeof filterType) => {
         setFilterType(type);
         setShowFilterDropdown(false);
     };
 
-    const handleStatusClick = (status: 'Upcoming' | 'Ongoing' | 'Ended') => {
+    const handleStatusClick = (status: 'UPCOMING' | 'ONGOING' | 'ENDED') => {
         setStatusFilter(prev => prev === status ? 'All' : status);
     };
 
-    const confirmDelete = (id: string, title: string) => {
+    const confirmDelete = (id: number, title: string) => {
         Alert.alert(
             "Close Activity",
             `Are you sure you want to close "${title}"? This action cannot be undone.`,
@@ -114,116 +144,175 @@ export default function OrgActivityScreen() {
         );
     };
 
-    const deleteActivity = (id: string) => {
-        setActivities(prev => prev.filter(item => item.id !== id));
+    const deleteActivity = async (id: number) => {
+        // console.log("Attempting to delete activity:", id);
+        if (!token) return;
+
+        try {
+            const response = await fetch(`https://marg-astonishing-matthias.ngrok-free.dev/api/v1/activities/${id}/close`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            const json = await response.json();
+
+            if (response.ok && (json.success || json.code === 0)) {
+                Alert.alert("Success", "Activity closed successfully.", [
+                    { text: "OK", onPress: () => fetchActivities() }
+                ]);
+            } else {
+                Alert.alert("Error", json.message || "Failed to close activity.");
+            }
+        } catch (error) {
+            console.error("Close Activity Error:", error);
+            Alert.alert("Error", "Network error. Please try again.");
+        }
     };
 
-    const renderActivityItem = ({ item }: { item: any }) => (
-        <View style={styles.activityCard}>
-            {/* Left Image Section */}
-            <View style={styles.imageContainer}>
-                <Image source={item.image} style={styles.activityImage} resizeMode="cover" />
+    const renderActivityItem = ({ item }: { item: Activity }) => {
+        const cleanUrl = item.imageUrl ? item.imageUrl.trim() : '';
+        const imageSource = (cleanUrl.startsWith('http')) ? { uri: cleanUrl } : require('../../assets/images/alternative.png');
+
+        // Determine Color based on registrationState (OPEN, CLOSED, FULL, etc.)
+        let statusColor = '#616161';
+        let statusBg = '#EEEEEE';
+
+        const s = (item.registrationState || 'UNKNOWN').toUpperCase();
+        if (['OPEN', 'UPCOMING'].includes(s)) {
+            statusColor = '#009688';
+            statusBg = '#E0F2F1';
+        } else if (['ONGOING', 'ON_GOING'].includes(s)) {
+            statusColor = '#FF9800';
+            statusBg = '#FFF3E0';
+        } else if (['ENDED', 'CLOSED', 'COMPLETED'].includes(s)) {
+            statusColor = '#616161';
+            statusBg = '#EEEEEE';
+        } else if (s === 'FULL') {
+            statusColor = '#D32F2F';
+            statusBg = '#FFEBEE';
+        }
+
+        return (
+            <View style={styles.activityCard}>
+                {/* Left Image Section */}
+                <View style={styles.imageContainer}>
+                    <Image source={imageSource} style={styles.activityImage} resizeMode="cover" />
+                </View>
+
+                {/* Right Content Section */}
+                <View style={styles.contentContainer}>
+                    {/* Management Actions */}
+                    <View style={styles.topActionsRow}>
+                        <TouchableOpacity
+                            style={[styles.actionButton, { borderColor: '#2196F3' }]}
+                            onPress={() => router.push({
+                                pathname: '/update-activity',
+                                params: {
+                                    id: item.activityId
+                                }
+                            })}
+                        >
+                            <Text style={[styles.actionButtonText, { color: '#2196F3' }]}>Update Activity</Text>
+                        </TouchableOpacity>
+                        {!['ENDED', 'CLOSED', 'COMPLETED'].includes(s) && item.activityStatus !== 'ENDED' && (
+                            <TouchableOpacity
+                                style={[styles.actionButton, { borderColor: '#F44336' }]}
+                                onPress={() => confirmDelete(item.activityId, item.title)}
+                            >
+                                <Text style={[styles.actionButtonText, { color: '#F44336' }]}>Close activity</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+
+                    {/* Title */}
+                    <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
+
+                    {/* Organizer - Removed as per schema (this is My Activities) */}
+
+                    {/* Description */}
+                    <Text style={styles.descriptionLabel}>Description:</Text>
+                    <Text style={styles.descriptionText} numberOfLines={2}>{item.shortDescription}</Text>
+
+                    {/* Details Grid */}
+                    <View style={styles.detailsGrid}>
+                        <View style={[styles.detailRow, { width: '100%', marginBottom: 4 }]}>
+                            <Ionicons name="calendar-outline" size={12} color="#888" />
+                            <Text style={styles.detailText}>
+                                {new Date(item.startDateTime).toLocaleDateString()}
+                            </Text>
+                        </View>
+                        <View style={[styles.detailRow, { width: '100%', marginBottom: 4 }]}>
+                            <Ionicons name="location-outline" size={12} color="#F44336" />
+                            <Text style={styles.detailText} numberOfLines={1}>{item.address}</Text>
+                        </View>
+                        <View style={[styles.detailRow, { width: '50%', marginBottom: 4 }]}>
+                            <Ionicons name="ellipse" size={8} color={statusColor} />
+                            <Text style={[styles.statusTextAbsolute, { color: statusColor, marginLeft: 6 }]}>
+                                {item.registrationState}
+                            </Text>
+                        </View>
+                        <View style={[styles.detailRow, { width: '50%', marginBottom: 4 }]}>
+                            <Ionicons name="ribbon-outline" size={12} color="#FF9800" />
+                            <Text style={styles.detailText}>+{item.theNumberOfCtxhDay} days</Text>
+                        </View>
+                    </View>
+
+                    {/* Deadline Warning */}
+                    {item.registrationDeadline && (
+                        <View style={{ marginTop: 4, marginBottom: 4 }}>
+                            <Text style={styles.deadlineText}>
+                                ⚠️ Deadline: {new Date(item.registrationDeadline).toLocaleDateString()}
+                            </Text>
+                        </View>
+                    )}
+
+                    {/* Footer: Slot & Handle Request */}
+                    <View style={styles.cardFooter}>
+                        <Text style={styles.slotText}>Slot: {item.approvedParticipants}/{item.maxParticipants}</Text>
+                        <TouchableOpacity
+                            style={styles.handleRequestButton}
+                            onPress={() => router.push({
+                                pathname: '/handle-request',
+                                params: {
+                                    activityId: item.activityId,
+                                    title: item.title,
+                                    slots: `${item.approvedParticipants}/${item.maxParticipants}`
+                                }
+                            })}
+                        >
+                            <Text style={styles.handleRequestText}>Handle Request →</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
             </View>
+        );
+    };
 
-            {/* Right Content Section */}
-            <View style={styles.contentContainer}>
-                {/* Management Actions */}
-                <View style={styles.topActionsRow}>
-                    <TouchableOpacity
-                        style={[styles.actionButton, { borderColor: '#2196F3' }]}
-                        onPress={() => router.push({
-                            pathname: '/update-activity',
-                            params: {
-                                id: item.id,
-                                title: item.title,
-                                description: item.description,
-                                time: item.time,
-                                location: item.location,
-                                slots: item.slots,
-                                deadline: item.deadline,
-                                // Assuming we might pass image ID/URI later, simplified for now
-                            }
-                        })}
-                    >
-                        <Text style={[styles.actionButtonText, { color: '#2196F3' }]}>Update Activity</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.actionButton, { borderColor: '#F44336' }]}
-                        onPress={() => confirmDelete(item.id, item.title)}
-                    >
-                        <Text style={[styles.actionButtonText, { color: '#F44336' }]}>Close activity</Text>
-                    </TouchableOpacity>
-                </View>
-
-                {/* Title */}
-                <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
-
-                {/* Organizer */}
-                <View style={styles.organizerRow}>
-                    <Ionicons name="people-outline" size={12} color="#666" />
-                    <Text style={styles.organizerText}>{item.organizer}</Text>
-                </View>
-
-                {/* Description */}
-                <Text style={styles.descriptionLabel}>Description:</Text>
-                <Text style={styles.descriptionText} numberOfLines={2}>{item.description}</Text>
-
-                {/* Details Grid */}
-                <View style={styles.detailsGrid}>
-                    <View style={[styles.detailRow, { width: '100%', marginBottom: 4 }]}>
-                        <Ionicons name="calendar-outline" size={12} color="#888" />
-                        <Text style={styles.detailText}>{item.time}</Text>
-                    </View>
-                    <View style={[styles.detailRow, { width: '100%', marginBottom: 4 }]}>
-                        <Ionicons name="location-outline" size={12} color="#F44336" />
-                        <Text style={styles.detailText}>{item.location}</Text>
-                    </View>
-                    <View style={[styles.detailRow, { width: '50%', marginBottom: 4 }]}>
-                        <Ionicons name="ellipse" size={8} color="#4CAF50" />
-                        <Text style={styles.detailText}>{item.status}</Text>
-                    </View>
-                    <View style={[styles.detailRow, { width: '50%', marginBottom: 4 }]}>
-                        <Ionicons name="ribbon-outline" size={12} color="#FF9800" />
-                        <Text style={styles.detailText}>{item.ctxh}</Text>
-                    </View>
-                </View>
-
-                {/* Deadline Warning */}
-                {item.deadline && (
-                    <Text style={styles.deadlineText}>🛡️ Deadline: {item.deadline}</Text>
-                )}
-
-                {/* Footer: Slot & Handle Request */}
-                <View style={styles.cardFooter}>
-                    <Text style={styles.slotText}>Slot: {item.slots}</Text>
-                    <TouchableOpacity
-                        style={styles.handleRequestButton}
-                        onPress={() => router.push({
-                            pathname: '/handle-request',
-                            params: {
-                                activityId: item.id, title: item.title,
-                                slots: item.slots
-                            }
-                        })}
-                    >
-                        <Text style={styles.handleRequestText}>Handle Request →</Text>
-                    </TouchableOpacity>
-                </View>
+    if (loading) {
+        return (
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <ActivityIndicator size="large" color="#FF4058" />
             </View>
-        </View>
-    );
+        );
+    }
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+            <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 100 }}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#FF4058']} />}
+            >
 
                 {/* Header */}
                 <View style={styles.header}>
-                    <TouchableOpacity style={styles.menuIcon}>
-                        <Ionicons name="menu" size={28} color="#333" />
+                    <TouchableOpacity style={styles.menuIcon} onPress={() => router.push('/notifications')}>
+                        <Ionicons name="notifications-outline" size={28} color="#333" />
                     </TouchableOpacity>
                     <Image source={require('../../assets/images/logo_univolun.png')} style={styles.headerLogo} resizeMode="contain" />
-                    <Image source={require('../../assets/images/student_image.png')} style={styles.avatar} />
+                    <HeaderAvatar />
                 </View>
 
                 {/* Search Bar */}
@@ -268,15 +357,27 @@ export default function OrgActivityScreen() {
                             {/* Dropdown Menu */}
                             {showFilterDropdown && (
                                 <View style={styles.dropdownMenu}>
-                                    {['All', 'Volunteer', 'Workshop'].map((type) => (
-                                        <TouchableOpacity
-                                            key={type}
-                                            style={[styles.dropdownItem, filterType === type && styles.dropdownItemActive]}
-                                            onPress={() => selectFilter(type as any)}
-                                        >
-                                            <Text style={[styles.dropdownText, filterType === type && styles.dropdownTextActive]}>{type}</Text>
-                                        </TouchableOpacity>
-                                    ))}
+                                    <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled>
+                                        {[
+                                            'All',
+                                            'EDUCATION_SUPPORT',
+                                            'SOCIAL_SUPPORT',
+                                            'COMMUNITY_SERVICE',
+                                            'ENVIRONMENT',
+                                            'HEALTH_CAMPAIGN',
+                                            'EVENT_SUPPORT',
+                                            'FUNDRAISING',
+                                            'OTHER'
+                                        ].map((type) => (
+                                            <TouchableOpacity
+                                                key={type}
+                                                style={[styles.dropdownItem, filterType === type && styles.dropdownItemActive]}
+                                                onPress={() => selectFilter(type as any)}
+                                            >
+                                                <Text style={[styles.dropdownText, filterType === type && styles.dropdownTextActive]}>{type.replace('_', ' ')}</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </ScrollView>
                                 </View>
                             )}
                         </View>
@@ -285,7 +386,7 @@ export default function OrgActivityScreen() {
 
                 {/* Status Circles (Interactive) */}
                 <View style={styles.statusContainer}>
-                    {['Upcoming', 'Ongoing', 'Ended'].map((status) => (
+                    {['UPCOMING', 'ONGOING', 'ENDED'].map((status) => (
                         <TouchableOpacity
                             key={status}
                             style={[styles.statusItem, { opacity: (statusFilter === 'All' || statusFilter === status) ? 1 : 0.3 }]}
@@ -293,16 +394,16 @@ export default function OrgActivityScreen() {
                         >
                             <View style={[styles.circle,
                             {
-                                borderColor: status === 'Upcoming' ? '#009688' : status === 'Ongoing' ? '#FF9800' : '#4CAF50',
-                                backgroundColor: statusFilter === status ? (status === 'Upcoming' ? '#E0F2F1' : status === 'Ongoing' ? '#FFF3E0' : '#E8F5E9') : '#333'
+                                borderColor: status === 'UPCOMING' ? '#009688' : status === 'ONGOING' ? '#FF9800' : '#4CAF50',
+                                backgroundColor: statusFilter === status ? (status === 'UPCOMING' ? '#E0F2F1' : status === 'ONGOING' ? '#FFF3E0' : '#E8F5E9') : '#333'
                             }
                             ]}>
-                                <Text style={[styles.statusCount, statusFilter === status && { color: status === 'Upcoming' ? '#009688' : status === 'Ongoing' ? '#FF9800' : '#4CAF50' }]}>
-                                    {status === 'Upcoming' ? upcomingCount : status === 'Ongoing' ? ongoingCount : endedCount}
+                                <Text style={[styles.statusCount, statusFilter === status && { color: status === 'UPCOMING' ? '#009688' : status === 'ONGOING' ? '#FF9800' : '#4CAF50' }]}>
+                                    {status === 'UPCOMING' ? upcomingCount : status === 'ONGOING' ? ongoingCount : endedCount}
                                 </Text>
-                                <Text style={[styles.statusLabelSmall, statusFilter === status && { color: status === 'Upcoming' ? '#009688' : status === 'Ongoing' ? '#FF9800' : '#4CAF50' }]}>Events</Text>
+                                <Text style={[styles.statusLabelSmall, statusFilter === status && { color: status === 'UPCOMING' ? '#009688' : status === 'ONGOING' ? '#FF9800' : '#4CAF50' }]}>Events</Text>
                             </View>
-                            <Text style={[styles.statusLabel, statusFilter === status && { color: status === 'Upcoming' ? '#009688' : status === 'Ongoing' ? '#FF9800' : '#4CAF50' }]}>{status.toUpperCase()}</Text>
+                            <Text style={[styles.statusLabel, statusFilter === status && { color: status === 'UPCOMING' ? '#009688' : status === 'ONGOING' ? '#FF9800' : '#4CAF50' }]}>{status}</Text>
                         </TouchableOpacity>
                     ))}
                 </View>
@@ -312,8 +413,13 @@ export default function OrgActivityScreen() {
                     <FlatList
                         data={filteredActivities}
                         renderItem={renderActivityItem}
-                        keyExtractor={item => item.id}
+                        keyExtractor={item => item.activityId.toString()}
                         scrollEnabled={false}
+                        ListEmptyComponent={() => (
+                            <View style={{ alignItems: 'center', marginTop: 50 }}>
+                                <Text style={{ color: '#999' }}>No activities found.</Text>
+                            </View>
+                        )}
                     />
                 </View>
 
@@ -341,7 +447,11 @@ const styles = StyleSheet.create({
         marginBottom: 20,
         marginTop: 10,
     },
-    menuIcon: { padding: 5 },
+    menuIcon: {
+        padding: 8,
+        backgroundColor: '#F5F5F5',
+        borderRadius: 50,
+    },
     headerLogo: { width: 100, height: 40 },
     avatar: { width: 40, height: 40, borderRadius: 20 },
     searchContainer: {
@@ -405,7 +515,11 @@ const styles = StyleSheet.create({
         width: 120,
         justifyContent: 'center',
         alignItems: 'center',
-        // paddingLeft: 8,
+        paddingLeft: 8,
+    },
+    statusTextAbsolute: {
+        fontSize: 10,
+        fontWeight: 'bold',
     },
     activityImage: {
         width: 270,

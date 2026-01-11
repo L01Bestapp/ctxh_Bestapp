@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Platform, KeyboardAvoidingView } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,6 +8,9 @@ import { Ionicons } from '@expo/vector-icons';
 export default function ResetPasswordScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
+    const params = useLocalSearchParams();
+    const { email, resetToken } = params;
+    const [isLoading, setIsLoading] = useState(false);
 
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -15,22 +18,55 @@ export default function ResetPasswordScreen() {
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     const rules = [
-        { id: 1, label: 'At least 8 characters', valid: password.length >= 8 },
-        { id: 2, label: 'At least one uppercase letter', valid: /[A-Z]/.test(password) },
+        { id: 1, label: 'At least 6 characters', valid: password.length >= 6 },
+        { id: 2, label: 'At least one letter', valid: /[a-zA-Z]/.test(password) },
         { id: 3, label: 'At least one number', valid: /[0-9]/.test(password) },
-        { id: 4, label: 'At least one special character', valid: /[!@#$%^&*(),.?":{}|<>]/.test(password) },
     ];
 
     const allRulesMet = rules.every(r => r.valid);
     const passwordsMatch = password === confirmPassword && password !== '';
     const isFormValid = allRulesMet && passwordsMatch;
 
-    const handleResetPassword = () => {
+
+
+    const handleResetPassword = async () => {
         if (!isFormValid) return;
-        // Logic to reset password (API call)
-        console.log("Password Reset");
-        // Navigate back to Login
-        router.replace('/login');
+
+        if (!resetToken) {
+            alert("Error: Missing reset token. Please try again from the beginning.");
+            router.replace('/login/forgot-password');
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            // Updated to match API Spec
+            const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/auth/reset-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    token: resetToken,
+                    newPassword: password,
+                    confirmNewPassword: confirmPassword
+                }),
+            });
+
+            const json = await response.json();
+
+            if (response.ok && json.success) {
+                alert(json.message || "Password reset successfully!");
+                router.replace('/login');
+            } else {
+                alert(json.message || "Failed to reset password.");
+            }
+        } catch (error) {
+            console.error("Reset Password Error:", error);
+            alert("An error occurred. Please try again.");
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (

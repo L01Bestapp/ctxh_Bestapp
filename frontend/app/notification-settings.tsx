@@ -1,17 +1,51 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { NOTIFICATION_SETTINGS } from './services/notificationService';
 
 export default function NotificationSettingsScreen() {
     const router = useRouter();
 
     const [generalNotification, setGeneralNotification] = useState(true);
     const [sound, setSound] = useState(true);
-    const [vibrate, setVibrate] = useState(true);
-    const [appUpdates, setAppUpdates] = useState(false);
-    const [newTips, setNewTips] = useState(true);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        loadSettings();
+    }, []);
+
+    const loadSettings = async () => {
+        try {
+            const values = await AsyncStorage.multiGet([
+                NOTIFICATION_SETTINGS.GENERAL,
+                NOTIFICATION_SETTINGS.SOUND
+            ]);
+
+            const getVal = (key: string) => {
+                const pair = values.find(([k]) => k === key);
+                return pair && pair[1] !== null ? pair[1] === 'true' : true;
+            };
+
+            setGeneralNotification(getVal(NOTIFICATION_SETTINGS.GENERAL));
+            setSound(getVal(NOTIFICATION_SETTINGS.SOUND));
+        } catch (e) {
+            console.error("Error loading settings", e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const toggleSetting = async (key: string, value: boolean, setter: (val: boolean) => void) => {
+        setter(value);
+        try {
+            await AsyncStorage.setItem(key, String(value));
+        } catch (e) {
+            console.error("Error saving setting", e);
+        }
+    };
 
     const ToggleItem = ({ label, value, onValueChange }: { label: string, value: boolean, onValueChange: (val: boolean) => void }) => (
         <View style={styles.itemContainer}>
@@ -22,6 +56,7 @@ export default function NotificationSettingsScreen() {
                 ios_backgroundColor="#E0E0E0"
                 onValueChange={onValueChange}
                 value={value}
+                disabled={loading}
             />
         </View>
     );
@@ -38,16 +73,17 @@ export default function NotificationSettingsScreen() {
             </View>
 
             <View style={styles.content}>
-                <Text style={styles.sectionHeader}>Common</Text>
-                <ToggleItem label="General Notification" value={generalNotification} onValueChange={setGeneralNotification} />
-                <ToggleItem label="Sound" value={sound} onValueChange={setSound} />
-                <ToggleItem label="Vibrate" value={vibrate} onValueChange={setVibrate} />
-
-                <View style={styles.divider} />
-
-                <Text style={styles.sectionHeader}>System & Services</Text>
-                <ToggleItem label="App Updates" value={appUpdates} onValueChange={setAppUpdates} />
-                <ToggleItem label="New Tips Available" value={newTips} onValueChange={setNewTips} />
+                <Text style={styles.sectionHeader}>Preferences</Text>
+                <ToggleItem
+                    label="Show Notifications"
+                    value={generalNotification}
+                    onValueChange={(v) => toggleSetting(NOTIFICATION_SETTINGS.GENERAL, v, setGeneralNotification)}
+                />
+                <ToggleItem
+                    label="Sound"
+                    value={sound}
+                    onValueChange={(v) => toggleSetting(NOTIFICATION_SETTINGS.SOUND, v, setSound)}
+                />
             </View>
 
         </SafeAreaView>

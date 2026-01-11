@@ -4,7 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
-
+import { useNotifications } from './hooks/useNotifications';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 
@@ -14,43 +14,54 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 
 SplashScreen.preventAutoHideAsync();
 
-export default function RootLayout() {
+function RootLayoutContent() {
   const colorScheme = useColorScheme();
+  // Hook handles all notification logic
+  useNotifications();
 
   return (
+    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      {/** Root Stack */}
+      <Stack initialRouteName="index">
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs-student)" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs-org)" options={{ headerShown: false }} />
+        <Stack.Screen name="onboarding/index" options={{ headerShown: false }} />
+        <Stack.Screen name="signup/role-selection" options={{ headerShown: false }} />
+        <Stack.Screen name="signup/student" options={{ headerShown: false }} />
+        <Stack.Screen name="signup/google-student-id" options={{ headerShown: false }} />
+        <Stack.Screen name="signup/organization" options={{ headerShown: false }} />
+        <Stack.Screen name="login/index" options={{ headerShown: false }} />
+        <Stack.Screen name="login/forgot-password" options={{ headerShown: false }} />
+        <Stack.Screen name="login/otp-verification" options={{ headerShown: false }} />
+        <Stack.Screen name="login/reset-password" options={{ headerShown: false }} />
+        <Stack.Screen name="get-started/index" options={{ headerShown: false }} />
+        <Stack.Screen name="create-activity" options={{ headerShown: false }} />
+        <Stack.Screen name="update-activity" options={{ headerShown: false }} />
+        <Stack.Screen name="handle-request" options={{ headerShown: false }} />
+        <Stack.Screen name="activity-detail" options={{ headerShown: false }} />
+        <Stack.Screen name="activity-detail-student" options={{ headerShown: false }} />
+        <Stack.Screen name="profile-settings" options={{ headerShown: false }} />
+        <Stack.Screen name="notification-settings" options={{ headerShown: false }} />
+        <Stack.Screen name="send-feedback" options={{ headerShown: false }} />
+        <Stack.Screen name="about-app" options={{ headerShown: false }} />
+        <Stack.Screen name="student-profile-settings" options={{ headerShown: false }} />
+        <Stack.Screen name="org-profile-settings" options={{ headerShown: false }} />
+        <Stack.Screen name="change-password" options={{ headerShown: false }} />
+        <Stack.Screen name="notifications" options={{ headerShown: false }} />
+        <Stack.Screen name="verify-email" options={{ headerShown: false }} />
+        <Stack.Screen name="admin" options={{ headerShown: false }} />
+        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+      </Stack>
+      <StatusBar style="auto" />
+    </ThemeProvider>
+  );
+}
+
+export default function RootLayout() {
+  return (
     <AuthProvider>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack initialRouteName="index">
-          <Stack.Screen name="index" options={{ headerShown: false }} />
-          <Stack.Screen name="(tabs-student)" options={{ headerShown: false }} />
-          <Stack.Screen name="(tabs-org)" options={{ headerShown: false }} />
-          <Stack.Screen name="onboarding/index" options={{ headerShown: false }} />
-          <Stack.Screen name="signup/role-selection" options={{ headerShown: false }} />
-          <Stack.Screen name="signup/student" options={{ headerShown: false }} />
-          <Stack.Screen name="signup/google-student-id" options={{ headerShown: false }} />
-          <Stack.Screen name="signup/organization" options={{ headerShown: false }} />
-          <Stack.Screen name="login/index" options={{ headerShown: false }} />
-          <Stack.Screen name="login/forgot-password" options={{ headerShown: false }} />
-          <Stack.Screen name="login/otp-verification" options={{ headerShown: false }} />
-          <Stack.Screen name="login/reset-password" options={{ headerShown: false }} />
-          <Stack.Screen name="get-started/index" options={{ headerShown: false }} />
-          <Stack.Screen name="create-activity" options={{ headerShown: false }} />
-          <Stack.Screen name="update-activity" options={{ headerShown: false }} />
-          <Stack.Screen name="handle-request" options={{ headerShown: false }} />
-          <Stack.Screen name="activity-detail" options={{ headerShown: false }} />
-          <Stack.Screen name="activity-detail-student" options={{ headerShown: false }} />
-          <Stack.Screen name="profile-settings" options={{ headerShown: false }} />
-          <Stack.Screen name="notification-settings" options={{ headerShown: false }} />
-          <Stack.Screen name="send-feedback" options={{ headerShown: false }} />
-          <Stack.Screen name="about-app" options={{ headerShown: false }} />
-          <Stack.Screen name="student-profile-settings" options={{ headerShown: false }} />
-          <Stack.Screen name="notifications" options={{ headerShown: false }} />
-          <Stack.Screen name="verify-email" options={{ headerShown: false }} />
-          <Stack.Screen name="admin" options={{ headerShown: false }} />
-          <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-        </Stack>
-        <StatusBar style="auto" />
-      </ThemeProvider>
+      <RootLayoutContent />
     </AuthProvider>
   );
 }

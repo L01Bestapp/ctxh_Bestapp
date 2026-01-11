@@ -1,17 +1,72 @@
-import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { useAuth } from '../context/AuthContext';
 
 export default function OrgProfileScreen() {
     const router = useRouter();
+    const { token, logout } = useAuth();
+    const [profileData, setProfileData] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+
+    useFocusEffect(
+        useCallback(() => {
+            if (token) fetchProfile();
+        }, [token])
+    );
+
+    const fetchProfile = async () => {
+        try {
+            const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/organization/profile', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const json = await response.json();
+            if (json.success) {
+                setProfileData(json.data);
+            }
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    };
+
+    const onRefresh = useCallback(() => {
+        setRefreshing(true);
+        fetchProfile();
+    }, []);
+
+    const handleLogout = async () => {
+        await logout();
+        router.replace('/login');
+    };
+
+    const InfoRow = ({ icon, label, value, color = "#555" }: { icon: any, label: string, value: string | undefined, color?: string }) => (
+        <View style={styles.infoRow}>
+            <View style={[styles.iconBox, { backgroundColor: color + '15' }]}>
+                <MaterialCommunityIcons name={icon} size={20} color={color} />
+            </View>
+            <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>{label}</Text>
+                <Text style={styles.infoValue}>{value || 'N/A'}</Text>
+            </View>
+        </View>
+    );
 
     const menuItems = [
         {
             title: 'Profile Settings',
             icon: 'settings-outline' as const,
-            onPress: () => router.push('/profile-settings'),
+            onPress: () => router.push('/org-profile-settings'),
+        },
+        {
+            title: 'Change Password',
+            icon: 'lock-closed-outline' as const,
+            onPress: () => router.push('/change-password'),
         },
         {
             title: 'Notification Settings',
@@ -30,38 +85,98 @@ export default function OrgProfileScreen() {
         },
     ];
 
-    const handleLogout = () => {
-        // Implement logout logic here
-        router.replace('/login');
-    };
+    if (loading) {
+        return (
+            <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <ActivityIndicator size="large" color="#1A237E" />
+            </SafeAreaView>
+        );
+    }
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
             {/* Header */}
             <View style={styles.header}>
-                <TouchableOpacity style={styles.menuButton}>
-                    <Ionicons name="menu" size={24} color="#333" />
+                <TouchableOpacity onPress={() => router.back()} style={styles.menuButton}>
+                    <Ionicons name="chevron-back" size={24} color="#333" />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>MY PROFILE</Text>
-                <View style={{ width: 40 }} />
+                <TouchableOpacity style={styles.editButton} onPress={() => router.push('/org-profile-settings')}>
+                    <Ionicons name="create-outline" size={24} color="#333" />
+                </TouchableOpacity>
             </View>
 
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <ScrollView
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#1A237E"]} />}
+            >
 
                 {/* Profile Info */}
                 <View style={styles.profileInfoContainer}>
                     <View style={styles.avatarContainer}>
                         <Image
-                            source={require('../../assets/images/org_image.png')}
+                            source={profileData?.avatarUrl ? { uri: profileData.avatarUrl } : require('../../assets/images/org_image.png')}
                             style={styles.avatar}
                         />
                     </View>
-                    <Text style={styles.orgName}>BK-EVENT CLUB</Text>
+                    <Text style={styles.orgName}>{profileData?.organizationName || 'Organization'}</Text>
                     <Text style={styles.orgUniversity}>Ho Chi Minh City University Of Technology</Text>
+                    {profileData?.bio && <Text style={styles.subInfoItalic}>"{profileData.bio}"</Text>}
                 </View>
 
                 {/* Divider Line */}
                 <View style={styles.divider} />
+
+                {/* Organization Information Section */}
+                <View style={styles.sectionContainer}>
+                    <Text style={styles.sectionTitle}>Organization Information</Text>
+                    <View style={styles.infoCard}>
+                        <InfoRow
+                            icon="domain"
+                            label="Organization Type"
+                            value={profileData?.type?.replace(/_/g, ' ') || profileData?.organizationType?.replace(/_/g, ' ')}
+                            color="#FF9800"
+                        />
+                        <InfoRow
+                            icon="email-outline"
+                            label="Organization Email"
+                            value={profileData?.email}
+                            color="#E91E63"
+                        />
+                        <InfoRow
+                            icon="calendar-clock"
+                            label="Member Since"
+                            value={profileData?.createdAt ? new Date(profileData.createdAt).toLocaleDateString() : undefined}
+                            color="#009688"
+                        />
+                    </View>
+                </View>
+
+                {/* Representative Information Section */}
+                <View style={styles.sectionContainer}>
+                    <Text style={styles.sectionTitle}>Representative Information</Text>
+                    <View style={styles.infoCard}>
+                        <InfoRow
+                            icon="account-tie-outline"
+                            label="Representative Name"
+                            value={profileData?.representativeName}
+                            color="#673AB7"
+                        />
+                        <InfoRow
+                            icon="email-outline"
+                            label="Representative Email"
+                            value={profileData?.representativeEmail}
+                            color="#2196F3"
+                        />
+                        <InfoRow
+                            icon="phone-outline"
+                            label="Phone Number"
+                            value={profileData?.representativePhoneNumber}
+                            color="#4CAF50"
+                        />
+                    </View>
+                </View>
 
                 {/* Menu Options */}
                 <View style={styles.menuContainer}>
@@ -102,7 +217,10 @@ const styles = StyleSheet.create({
         paddingVertical: 15,
     },
     menuButton: {
-        padding: 8,
+        padding: 5,
+    },
+    editButton: {
+        padding: 5,
         backgroundColor: '#F5F5F5',
         borderRadius: 50,
     },
@@ -114,7 +232,7 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         alignItems: 'center',
-        paddingBottom: 40,
+        paddingBottom: 120,
     },
     profileInfoContainer: {
         alignItems: 'center',
@@ -152,12 +270,73 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         paddingHorizontal: 40,
     },
+    subInfoItalic: {
+        fontSize: 13,
+        color: '#888',
+        textAlign: 'center',
+        paddingHorizontal: 40,
+        fontStyle: 'italic',
+        marginTop: 6,
+    },
     divider: {
         width: '80%',
         height: 1,
         backgroundColor: '#E0E0E0',
         marginVertical: 20,
     },
+    // New Sections Styles
+    sectionContainer: {
+        width: '100%',
+        paddingHorizontal: 20,
+        marginBottom: 20,
+    },
+    sectionTitle: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: '#888',
+        marginBottom: 10,
+        marginLeft: 10,
+        letterSpacing: 1,
+        alignSelf: 'flex-start',
+    },
+    infoCard: {
+        backgroundColor: '#fff',
+        borderRadius: 20,
+        padding: 20,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.03,
+        shadowRadius: 8,
+        elevation: 2,
+        width: '100%',
+    },
+    infoRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    iconBox: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 15,
+    },
+    infoContent: {
+        flex: 1,
+    },
+    infoLabel: {
+        fontSize: 12,
+        color: '#999',
+        marginBottom: 2,
+    },
+    infoValue: {
+        fontSize: 15,
+        color: '#333',
+        fontWeight: '500',
+    },
+    // Menu
     menuContainer: {
         width: '100%',
         paddingHorizontal: 20,

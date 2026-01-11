@@ -1,153 +1,305 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, Alert, TextInput } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, Alert, TextInput, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from './context/AuthContext';
 
-// Types
-type RequestStatus = 'Pending' | 'Approved' | 'Rejected';
-
-interface RequestItem {
-    id: string;
-    name: string;
-    studentId: string;
+interface Enrollment {
+    enrollmentId: number;
+    status: 'PENDING' | 'APPROVED' | 'REJECTED';
+    appliedAt: string;        // ISO datetime
+    approvedAt: string | null;
+    approvedBy: number | null;
+    rejectedAt: string | null;
+    rejectedBy: number | null;
+    isCompleted: boolean;
+    completedAt: string | null;
+    studentId: number;
+    fullName: string;
+    mssv: string;
     email: string;
-    avatar: any;
-    status: RequestStatus;
-    appliedTime: string; // Display string
-    timestamp: number;   // For sorting
+    phoneNumber: string;
+    academicYear: string | null;
+    faculty: string | null;
+    gender: 'MALE' | 'FEMALE' | 'OTHER' | null;
+    dateOfBirth: string | null; // ISO date
+    totalCtxhDays: number;
 }
 
-// Mock Data
-const INITIAL_REQUESTS: RequestItem[] = [
-    {
-        id: '1', name: 'Nguyen Van A', studentId: '2111001', email: 'van.nguyen21@hcmut.edu.vn',
-        avatar: require('../assets/images/student_image.png'), status: 'Pending', appliedTime: '2 hours ago', timestamp: Date.now() - 7200000
-    },
-    {
-        id: '2', name: 'Tran Thi B', studentId: '2111002', email: 'thi.tran21@hcmut.edu.vn',
-        avatar: require('../assets/images/student_image.png'), status: 'Pending', appliedTime: '5 hours ago', timestamp: Date.now() - 18000000
-    },
-    {
-        id: '3', name: 'Le Van C', studentId: '2111003', email: 'van.le21@hcmut.edu.vn',
-        avatar: require('../assets/images/student_image.png'), status: 'Pending', appliedTime: '1 day ago', timestamp: Date.now() - 86400000
-    },
-    // Mock History Items
-    {
-        id: '4', name: 'Nguyen Thi An', studentId: '2212023', email: 'annguyen@hcmut.edu.vn',
-        avatar: require('../assets/images/student_image.png'), status: 'Approved', appliedTime: '2 days ago', timestamp: Date.now() - 172800000
-    },
-    {
-        id: '5', name: 'Nguyen Van Binh', studentId: '2314321', email: 'vanbinh@hcmut.edu.vn',
-        avatar: require('../assets/images/student_image.png'), status: 'Rejected', appliedTime: '3 days ago', timestamp: Date.now() - 259200000
-    },
-];
 
 export default function HandleRequestScreen() {
     const router = useRouter();
     const params = useLocalSearchParams();
+    const { token, user } = useAuth();
+    const activityId = params.activityId;
 
     // State
     const [activeTab, setActiveTab] = useState<'review' | 'history'>('review');
-    const [requests, setRequests] = useState<RequestItem[]>(INITIAL_REQUESTS);
+    const [requests, setRequests] = useState<Enrollment[]>([]);
+    const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
 
-    // Filter Data based on Tab, Search, and Sort
+    // Parse initial slots from params as fallback
+    const initialSlots = (params.slots as string || '0/0').split('/').map(Number);
+
+    // State for activity stats (fetched from API)
+    const [stats, setStats] = useState({
+        approved: initialSlots[0] || 0,
+        max: initialSlots[1] || 0
+    });
+
+    React.useEffect(() => {
+        fetchActivityDetail();
+        fetchEnrollments();
+    }, [activityId, token]);
+
+    const fetchActivityDetail = async () => {
+        if (!activityId || !token) return;
+        try {
+            const response = await fetch(`https://marg-astonishing-matthias.ngrok-free.dev/api/v1/activities/${activityId}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            const json = await response.json();
+            if (json.success && json.data) {
+                setStats({
+                    approved: json.data.approvedParticipants,
+                    max: json.data.maxParticipants
+                });
+            }
+        } catch (error) {
+            console.error("Fetch Activity Stats Error:", error);
+        }
+    };
+
+    const fetchEnrollments = async () => {
+        if (!activityId || !token) return;
+        try {
+            setLoading(true);
+            const response = await fetch(`https://marg-astonishing-matthias.ngrok-free.dev/api/v1/activities/${activityId}/enrollments`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            const json = await response.json();
+            if (json.success && Array.isArray(json.data)) {
+                setRequests(json.data);
+            }
+        } catch (error) {
+            console.error("Fetch Enrollments Error:", error);
+            Alert.alert("Error", "Failed to load enrollments");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const [filterCohort, setFilterCohort] = useState<string | null>(null);
+
+    // ... (existing code for stats state and fetch effects)
+
+    const formatDateTime = (dateString: string) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        // DD/MM/YYYY HH:mm
+        return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+    };
+
+    // Filter Data based on Tab, Search, Sort, and Cohort
     const displayData = useMemo(() => {
         // 1. Filter by Tab
         let filtered = requests.filter(req => {
-            if (activeTab === 'review') return req.status === 'Pending';
-            return req.status === 'Approved' || req.status === 'Rejected';
+            if (activeTab === 'review') return req.status === 'PENDING';
+            return req.status === 'APPROVED' || req.status === 'REJECTED';
         });
 
         // 2. Filter by Search
         if (searchQuery) {
             const query = searchQuery.toLowerCase();
             filtered = filtered.filter(req =>
-                req.name.toLowerCase().includes(query) ||
-                req.studentId.includes(query) ||
+                req.fullName.toLowerCase().includes(query) ||
+                req.mssv.includes(query) ||
                 req.email.toLowerCase().includes(query)
             );
         }
 
-        // 3. Sort
+        // 3. Filter by Cohort (K21, K22, etc.)
+        if (filterCohort && filterCohort !== 'All') {
+            // "K22" -> prefix "22"
+            const prefix = filterCohort.replace('K', '');
+            filtered = filtered.filter(req => req.mssv.startsWith(prefix));
+        }
+
+        // 4. Sort
         filtered.sort((a, b) => {
+            const timeA = new Date(a.appliedAt).getTime();
+            const timeB = new Date(b.appliedAt).getTime();
             return sortOrder === 'newest'
-                ? b.timestamp - a.timestamp
-                : a.timestamp - b.timestamp;
+                ? timeB - timeA
+                : timeA - timeB;
         });
 
         return filtered;
-    }, [requests, activeTab, searchQuery, sortOrder]);
+    }, [requests, activeTab, searchQuery, sortOrder, filterCohort]);
 
     // Handlers
-    const updateStatus = (id: string, newStatus: RequestStatus) => {
+    const updateStatus = (id: number, newStatus: 'APPROVED' | 'REJECTED') => {
         setRequests(prev => prev.map(req =>
-            req.id === id ? { ...req, status: newStatus } : req
+            req.enrollmentId === id ? { ...req, status: newStatus } : req
         ));
     };
 
-    const handleAccept = (id: string, name: string) => {
+    const handleAccept = async (id: number, name: string) => {
         Alert.alert("Confirm Acceptance", `Accept ${name}?`, [
             { text: "Cancel", style: "cancel" },
-            { text: "Accept", onPress: () => updateStatus(id, 'Approved') }
+            {
+                text: "Accept",
+                onPress: async () => {
+                    if (!user?.id) {
+                        Alert.alert("Error", "User info not found");
+                        return;
+                    }
+                    try {
+                        const url = `https://marg-astonishing-matthias.ngrok-free.dev/api/v1/activities/${activityId}/enrollments/${id}/approve?approvedBy=${user.id}`;
+                        const response = await fetch(url, {
+                            method: 'PUT',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                        const json = await response.json();
+
+                        if (response.ok && (json.success || json.code === 0)) {
+                            updateStatus(id, 'APPROVED');
+                            fetchActivityDetail(); // Refresh slot count from server
+                            Alert.alert("Success", `${name} has been accepted`);
+                        } else {
+                            Alert.alert("Error", json.message || "Failed to accept");
+                        }
+                    } catch (error) {
+                        console.error("Accept Error:", error);
+                        Alert.alert("Error", "Failed to accept enrollment");
+                    }
+                }
+            }
         ]);
     };
 
-    const handleReject = (id: string, name: string) => {
+    const handleReject = (id: number, name: string) => {
         Alert.alert("Confirm Rejection", `Reject ${name}?`, [
             { text: "Cancel", style: "cancel" },
-            { text: "Reject", style: 'destructive', onPress: () => updateStatus(id, 'Rejected') }
+            {
+                text: "Reject",
+                style: 'destructive',
+                onPress: async () => {
+                    if (!user?.id) {
+                        Alert.alert("Error", "User info not found");
+                        return;
+                    }
+                    try {
+                        const url = `https://marg-astonishing-matthias.ngrok-free.dev/api/v1/activities/${activityId}/enrollments/${id}/reject?rejectedBy=${user.id}`;
+                        const response = await fetch(url, {
+                            method: 'PUT',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                        const json = await response.json();
+
+                        if (response.ok && (json.success || json.code === 0)) {
+                            updateStatus(id, 'REJECTED');
+                            fetchActivityDetail(); // Refresh stats
+                            Alert.alert("Success", `${name} has been rejected`);
+                        } else {
+                            Alert.alert("Error", json.message || "Failed to reject");
+                        }
+                    } catch (error) {
+                        console.error("Reject Error:", error);
+                        Alert.alert("Error", "Failed to reject enrollment");
+                    }
+                }
+            }
         ]);
+    };
+
+    const handleFilterPress = () => {
+        const currentYear = new Date().getFullYear();
+        // Generate cohorts: from (Year - 6) to (Year - 1)
+        // e.g. 2026 -> 2020 (K20) to 2025 (K25)
+        const cohorts = Array.from({ length: 6 }, (_, i) => {
+            const year = currentYear - 6 + i;
+            return `K${year % 100}`;
+        });
+
+        const options = [
+            { text: "All", onPress: () => setFilterCohort(null) },
+            ...cohorts.map(k => ({ text: k, onPress: () => setFilterCohort(k) })),
+            { text: "Cancel", style: "cancel" }
+        ];
+
+        Alert.alert(
+            "Filter by Cohort",
+            "Select a cohort to filter by:",
+            options as any, // Type assertion to satisfy Alert static method if needed, though strictly it fits AlertButton
+            { cancelable: true }
+        );
     };
 
     // Render Items
-    const renderItem = ({ item, index }: { item: RequestItem, index: number }) => {
+    const renderItem = ({ item, index }: { item: Enrollment, index: number }) => {
+        const studentAvatar = require('../assets/images/student_image.png');
+
         if (activeTab === 'review') {
-            // Under Review Item (Pending)
             return (
                 <View style={styles.card}>
                     <View style={styles.cardHeaderRow}>
                         <View style={styles.indexBadge}>
                             <Text style={styles.indexText}>#{index + 1}</Text>
                         </View>
-                        <Text style={styles.timestamp}>Applied: {item.appliedTime}</Text>
+                        <Text style={styles.timestamp}>Applied: {formatDateTime(item.appliedAt)}</Text>
                     </View>
                     <View style={styles.divider} />
                     <View style={styles.cardContent}>
-                        <Image source={item.avatar} style={styles.avatar} />
+                        <Image source={studentAvatar} style={styles.avatar} />
                         <View style={styles.textContainer}>
-                            <Text style={styles.name}>{item.name}</Text>
-                            <Text style={styles.studentId}>ID: {item.studentId}</Text>
+                            <Text style={styles.name}>{item.fullName}</Text>
+                            <Text style={styles.studentId}>ID: {item.mssv}</Text>
                             <Text style={styles.email} numberOfLines={1}>{item.email}</Text>
+                            {item.faculty ? <Text style={styles.email}>{item.faculty}</Text> : null}
                         </View>
                     </View>
                     <View style={styles.actionRow}>
-                        <TouchableOpacity style={[styles.button, styles.rejectButton]} onPress={() => handleReject(item.id, item.name)}>
+                        <TouchableOpacity style={[styles.button, styles.rejectButton]} onPress={() => handleReject(item.enrollmentId, item.fullName)}>
                             <Text style={styles.rejectText}>Decline</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={[styles.button, styles.acceptButton]} onPress={() => handleAccept(item.id, item.name)}>
+                        <TouchableOpacity style={[styles.button, styles.acceptButton]} onPress={() => handleAccept(item.enrollmentId, item.fullName)}>
                             <Text style={styles.acceptText}>Accept</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
             );
         } else {
-            // History Item (Approved/Rejected)
+            // History
             return (
                 <View style={styles.historyCard}>
                     <Text style={styles.historyIndex}>#{index + 1}</Text>
-                    <Image source={item.avatar} style={styles.historyAvatar} />
+                    <Image source={studentAvatar} style={styles.historyAvatar} />
                     <View style={styles.historyInfo}>
-                        <Text style={styles.historyName}>{item.name}</Text>
+                        <Text style={styles.historyName}>{item.fullName}</Text>
                         <Text style={styles.historyEmail}>{item.email}</Text>
+                        <Text style={[styles.historyEmail, { fontSize: 10 }]}>{formatDateTime(item.appliedAt)}</Text>
                     </View>
                     <View style={styles.historyRight}>
-                        <Text style={styles.historyId}>{item.studentId}</Text>
+                        <Text style={styles.historyId}>{item.mssv}</Text>
                         <View style={[
                             styles.statusBadgeSmall,
-                            item.status === 'Approved' ? styles.badgeApproved : styles.badgeRejected
+                            item.status === 'APPROVED' ? styles.badgeApproved : styles.badgeRejected
                         ]}>
                             <Text style={styles.statusTextSmall}>{item.status}</Text>
                         </View>
@@ -159,7 +311,7 @@ export default function HandleRequestScreen() {
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
-            {/* Header */}
+            {/* Header ... */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                     <Ionicons name="chevron-back" size={28} color="#000" />
@@ -172,7 +324,7 @@ export default function HandleRequestScreen() {
                 </TouchableOpacity>
             </View>
 
-            {/* Tabs */}
+            {/* Tabs ... */}
             <View style={styles.tabContainer}>
                 <TouchableOpacity
                     style={[styles.tab, activeTab === 'review' && styles.activeTab]}
@@ -188,11 +340,10 @@ export default function HandleRequestScreen() {
                 </TouchableOpacity>
             </View>
 
-            {/* Content Header (Member of Activity & Search) */}
             <View style={styles.contentContainer}>
                 <Text style={styles.sectionTitle}>MEMBER OF ACTIVITY</Text>
 
-                {/* Search & Sort */}
+                {/* Search & Sort Only (Filter Removed) */}
                 <View style={styles.searchRow}>
                     <View style={styles.searchBar}>
                         <Ionicons name="search" size={18} color="#999" />
@@ -210,33 +361,41 @@ export default function HandleRequestScreen() {
                 <View style={styles.filterRow}>
                     <View style={{ flex: 1 }} />
                     <TouchableOpacity style={styles.filterButton} onPress={() => setSortOrder(prev => prev === 'newest' ? 'oldest' : 'newest')}>
-                        <Text style={styles.filterBtnText}>Sort</Text>
+                        <Text style={styles.filterBtnText}>Sort: {sortOrder === 'newest' ? 'Newest' : 'Oldest'}</Text>
                         <Ionicons name="swap-vertical" size={12} color="#333" />
                     </TouchableOpacity>
-                    <TouchableOpacity style={[styles.filterButton, { marginLeft: 8 }]}>
-                        <Text style={styles.filterBtnText}>Filter</Text>
+                    <TouchableOpacity style={[styles.filterButton, { marginLeft: 8 }]} onPress={handleFilterPress}>
+                        <Text style={styles.filterBtnText}>
+                            Filter: {filterCohort || 'All'}
+                        </Text>
                         <Ionicons name="filter" size={12} color="#333" />
                     </TouchableOpacity>
                 </View>
 
                 <View style={styles.totalRow}>
-                    <Text style={styles.totalText}>Slots: <Text style={{ color: '#4CAF50' }}>{params.slots || '--/--'}</Text></Text>
+                    <Text style={styles.totalText}>Slots: <Text style={{ color: '#4CAF50' }}>{stats.approved}/{stats.max}</Text></Text>
                     <Text style={styles.totalText}>Total: <Text style={{ color: '#FF4058' }}>{displayData.length}</Text></Text>
                 </View>
             </View>
 
             {/* List */}
-            <FlatList
-                data={displayData}
-                renderItem={renderItem}
-                keyExtractor={item => item.id}
-                contentContainerStyle={styles.list}
-                ListEmptyComponent={
-                    <View style={styles.emptyState}>
-                        <Text style={styles.emptyText}>No members found</Text>
-                    </View>
-                }
-            />
+            {loading ? (
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                    <ActivityIndicator size="large" color="#FF4058" />
+                </View>
+            ) : (
+                <FlatList
+                    data={displayData}
+                    renderItem={renderItem}
+                    keyExtractor={item => item.enrollmentId.toString()}
+                    contentContainerStyle={styles.list}
+                    ListEmptyComponent={
+                        <View style={styles.emptyState}>
+                            <Text style={styles.emptyText}>No members found</Text>
+                        </View>
+                    }
+                />
+            )}
         </SafeAreaView>
     );
 }

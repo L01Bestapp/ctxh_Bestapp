@@ -2,8 +2,7 @@ import { Tabs } from 'expo-router';
 import React from 'react';
 import { Platform, View, Image } from 'react-native';
 import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { FontAwesome6 } from '@expo/vector-icons';
+import { Ionicons, FontAwesome6 } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
@@ -46,14 +45,14 @@ export default function TabLayout() {
                 name="home"
                 options={{
                     title: 'Home',
-                    tabBarIcon: ({ color }) => <IconSymbol size={24} name="house.fill" color={color} />,
+                    tabBarIcon: ({ color }) => <Ionicons size={24} name="home" color={color} />,
                 }}
             />
             <Tabs.Screen
                 name="activity"
                 options={{
                     title: 'Activity',
-                    tabBarIcon: ({ color }) => <IconSymbol size={24} name="doc.text.fill" color={color} />,
+                    tabBarIcon: ({ color }) => <Ionicons size={24} name="document-text" color={color} />,
                 }}
             />
             <Tabs.Screen
@@ -77,7 +76,7 @@ export default function TabLayout() {
                             borderWidth: 1,
                             borderColor: '#eee'
                         }}>
-                            <IconSymbol size={32} name="qrcode.viewfinder" color="#000" />
+                            <Ionicons size={32} name="qr-code" color="#000" />
                         </View>
                     ),
                     tabBarLabel: () => null, // Hide label for center button

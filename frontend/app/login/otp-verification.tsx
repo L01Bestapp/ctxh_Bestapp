@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Platform, KeyboardAvoidingView } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,6 +8,9 @@ import { Ionicons } from '@expo/vector-icons';
 export default function OtpVerificationScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
+    const params = useLocalSearchParams();
+    const email = params.email as string;
+    const [isLoading, setIsLoading] = useState(false);
 
     // OTP State (6 digits)
     const [otp, setOtp] = useState(['', '', '', '', '', '']);
@@ -54,11 +57,56 @@ export default function OtpVerificationScreen() {
         console.log("Resending code...");
     };
 
-    const handleConfirm = () => {
+
+
+    const handleConfirm = async () => {
         const otpString = otp.join('');
-        console.log("OTP Submitted:", otpString);
-        // Logic to verify OTP
-        router.push('/login/reset-password');
+        if (otpString.length < 6) {
+            alert("Please enter the full 6-digit code.");
+            return;
+        }
+
+        if (!email) {
+            alert("Error: Email missing. Please start over.");
+            router.replace('/login/forgot-password');
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/auth/verify-otp', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: email,
+                    otpCode: otpString
+                }),
+            });
+
+            const json = await response.json();
+
+            if (response.ok && json.success) {
+                // Success
+                const token = json.data?.resetPasswordToken;
+                // Navigate to Reset Password
+                router.push({
+                    pathname: '/login/reset-password',
+                    params: {
+                        email: email,
+                        resetToken: token
+                    }
+                });
+            } else {
+                alert(json.message || "Invalid OTP code.");
+            }
+        } catch (error) {
+            console.error("Verify OTP Error:", error);
+            alert("An error occurred. Please try again.");
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const formatTime = (seconds: number) => {

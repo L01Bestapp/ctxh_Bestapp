@@ -1,114 +1,121 @@
-import React from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
+import React, { useCallback, useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-
-// Mock Data
-const NOTIFICATIONS_DATA = [
-    {
-        id: '1',
-        title: 'Registration Successful',
-        message: 'You have successfully registered for "Green Earth Cleanup".',
-        time: '2 hours ago',
-        icon: 'checkmark-circle',
-        color: '#4CAF50',
-        read: false,
-    },
-    {
-        id: '2',
-        title: 'New Event Nearby',
-        message: 'Check out the new "Blood Donation Drive" happening near you.',
-        time: '5 hours ago',
-        icon: 'location',
-        color: '#2196F3',
-        read: false,
-    },
-    {
-        id: '3',
-        title: 'Activity Reminder',
-        message: 'Don\'t forget, "Tech for Community" starts tomorrow at 08:00 AM.',
-        time: '1 day ago',
-        icon: 'alarm',
-        color: '#FF9800',
-        read: true,
-    },
-    {
-        id: '4',
-        title: 'Certificate Earned',
-        message: 'Congratulations! You earned a certificate for "Coding Bootcamp".',
-        time: '2 days ago',
-        icon: 'ribbon',
-        color: '#9C27B0',
-        read: true,
-    },
-    {
-        id: '5',
-        title: 'System Update',
-        message: 'We have updated our privacy policy. Please review the changes.',
-        time: '1 week ago',
-        icon: 'information-circle',
-        color: '#607D8B',
-        read: true,
-    },
-];
+import { useAuth } from './context/AuthContext';
+import {
+    fetchNotifications,
+    markAllNotificationsAsRead,
+    markNotificationAsRead,
+    NotificationItem,
+    setBadgeCount
+} from './services/notificationService';
 
 type FilterType = 'All' | 'Unread' | 'Read';
 
 export default function NotificationsScreen() {
     const router = useRouter();
-    const [notifications, setNotifications] = React.useState(NOTIFICATIONS_DATA);
+    const { token: authToken } = useAuth();
+    const [notifications, setNotifications] = React.useState<NotificationItem[]>([]);
+    const [loading, setLoading] = React.useState(true);
+    const [refreshing, setRefreshing] = React.useState(false);
     const [filter, setFilter] = React.useState<FilterType>('All');
 
-    const handleClearAll = () => {
-        if (notifications.length === 0) return;
+    const loadNotifications = useCallback(async () => {
+        if (!authToken) return;
+        setRefreshing(true);
+        const data = await fetchNotifications(authToken);
+        // Sort by date desc
+        data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setNotifications(data);
 
-        Alert.alert(
-            "Clear all notifications?",
-            "This action cannot be undone.",
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "Clear All",
-                    style: "destructive",
-                    onPress: () => setNotifications([])
-                }
-            ]
-        );
+        // Update badge count
+        const unread = data.filter(n => !n.isRead).length;
+        setBadgeCount(unread);
+
+        setLoading(false);
+        setRefreshing(false);
+    }, [authToken]);
+
+    useEffect(() => {
+        loadNotifications();
+    }, [loadNotifications]);
+
+    const handleMarkAllRead = async () => {
+        if (!authToken || notifications.length === 0) return;
+
+        // Optimistic update
+        const previous = [...notifications];
+        setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+
+        const success = await markAllNotificationsAsRead(authToken);
+        if (!success) {
+            setNotifications(previous); // Revert if failed
+        } else {
+            setBadgeCount(0);
+        }
     };
 
-    const markAsRead = (id: string) => {
-        setNotifications(prev => prev.map(item =>
-            item.id === id ? { ...item, read: true } : item
-        ));
+    const handleItemPress = async (item: NotificationItem) => {
+        // Mark as read if not
+        if (!item.isRead && authToken) {
+            markNotificationAsRead(item.id, authToken);
+            setNotifications(prev => prev.map(n => n.id === item.id ? { ...n, isRead: true } : n));
+            // Recalculate badge logic if needed (or wait for refresh)
+            // Ideally decrement badge locally
+        }
+
+        // Navigate based on data
+        // logic similar to useNotifications hook, or just use data directly if backend sends strictly
+        if (item.data?.activityId) {
+            router.push({
+                pathname: '/activity-detail',
+                params: { activityId: item.data.activityId }
+            } as any);
+        }
     };
 
     const filteredNotifications = React.useMemo(() => {
         if (filter === 'All') return notifications;
-        if (filter === 'Unread') return notifications.filter(n => !n.read);
-        if (filter === 'Read') return notifications.filter(n => n.read);
+        if (filter === 'Unread') return notifications.filter(n => !n.isRead);
+        if (filter === 'Read') return notifications.filter(n => n.isRead);
         return notifications;
     }, [notifications, filter]);
 
-    const renderItem = ({ item }: { item: any }) => (
-        <TouchableOpacity
-            style={[styles.itemContainer, !item.read && styles.unreadItem]}
-            onPress={() => markAsRead(item.id)}
-            activeOpacity={0.7}
-        >
-            <View style={[styles.iconContainer, { backgroundColor: item.color + '20' }]}>
-                <Ionicons name={item.icon} size={24} color={item.color} />
-            </View>
-            <View style={styles.textContainer}>
-                <View style={styles.topRow}>
-                    <Text style={[styles.title, !item.read && styles.unreadText]}>{item.title}</Text>
-                    <Text style={styles.time}>{item.time}</Text>
+    const getIconForType = (type: string) => {
+        switch (type) {
+            case 'REMINDER': return { name: 'alarm', color: '#FF9800' };
+            case 'ATTENDANCE_COMPLETED': return { name: 'checkmark-circle', color: '#4CAF50' };
+            case 'ENROLLMENT_APPROVED': return { name: 'ribbon', color: '#2196F3' };
+            case 'ENROLLMENT_REJECTED': return { name: 'close-circle', color: '#F44336' };
+            case 'ACTIVITY_CANCELLED': return { name: 'alert-circle', color: '#F44336' };
+            default: return { name: 'notifications', color: '#607D8B' };
+        }
+    };
+
+    const renderItem = ({ item }: { item: NotificationItem }) => {
+        const iconData = getIconForType(item.type);
+        return (
+            <TouchableOpacity
+                style={[styles.itemContainer, !item.isRead && styles.unreadItem]}
+                onPress={() => handleItemPress(item)}
+                activeOpacity={0.7}
+            >
+                <View style={[styles.iconContainer, { backgroundColor: iconData.color + '20' }]}>
+                    <Ionicons name={iconData.name as any} size={24} color={iconData.color} />
                 </View>
-                <Text style={styles.message} numberOfLines={2}>{item.message}</Text>
-            </View>
-            {!item.read && <View style={styles.unreadDot} />}
-        </TouchableOpacity>
-    );
+                <View style={styles.textContainer}>
+                    <View style={styles.topRow}>
+                        <Text style={[styles.title, !item.isRead && styles.unreadText]}>{item.title}</Text>
+                        <Text style={styles.time}>{new Date(item.createdAt).toLocaleString()}</Text>
+                    </View>
+                    <Text style={styles.message} numberOfLines={2}>{item.body}</Text>
+                </View>
+                {!item.isRead && <View style={styles.unreadDot} />}
+            </TouchableOpacity>
+        );
+    };
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
@@ -119,9 +126,9 @@ export default function NotificationsScreen() {
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>NOTIFICATIONS</Text>
 
-                {/* Clear All Button */}
-                <TouchableOpacity onPress={handleClearAll} style={styles.clearButton} disabled={notifications.length === 0}>
-                    <Text style={[styles.clearText, notifications.length === 0 && styles.clearTextDisabled]}>Clear</Text>
+                {/* Mark All Read Button */}
+                <TouchableOpacity onPress={handleMarkAllRead} style={styles.clearButton} disabled={notifications.length === 0}>
+                    <Text style={[styles.clearText, notifications.length === 0 && styles.clearTextDisabled]}>Read All</Text>
                 </TouchableOpacity>
             </View>
 
@@ -129,7 +136,7 @@ export default function NotificationsScreen() {
             <View style={styles.filterContainer}>
                 {(['All', 'Unread', 'Read'] as FilterType[]).map((f) => {
                     const isActive = filter === f;
-                    const unreadCount = notifications.filter(n => !n.read).length;
+                    const unreadCount = notifications.filter(n => !n.isRead).length;
 
                     return (
                         <TouchableOpacity
@@ -154,13 +161,20 @@ export default function NotificationsScreen() {
 
             {/* List */}
             <View style={{ flex: 1, zIndex: -1 }}>
-                {filteredNotifications.length > 0 ? (
+                {loading && !refreshing ? (
+                    <View style={styles.center}>
+                        <ActivityIndicator color="#FF4058" />
+                    </View>
+                ) : filteredNotifications.length > 0 ? (
                     <FlatList
                         data={filteredNotifications}
                         renderItem={renderItem}
-                        keyExtractor={item => item.id}
+                        keyExtractor={item => item.id.toString()}
                         contentContainerStyle={styles.listContent}
                         showsVerticalScrollIndicator={false}
+                        refreshControl={
+                            <RefreshControl refreshing={refreshing} onRefresh={loadNotifications} />
+                        }
                     />
                 ) : (
                     <View style={styles.emptyContainer}>
@@ -178,7 +192,11 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#fff',
     },
-    // ... (header styles kept simplified)
+    center: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
     header: {
         flexDirection: 'row',
         alignItems: 'center',

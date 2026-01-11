@@ -1,26 +1,109 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, Dimensions, ActivityIndicator, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useAuth } from './context/AuthContext';
 
 const { width } = Dimensions.get('window');
+
+// API Interface matching schema
+interface ActivityDetail {
+    activityId: number;
+    organizationName: string;
+    imageUrl?: string;
+    name: string; // Changed from title to name
+    description: string;
+    shortDescription: string;
+    category: string;
+    startDateTime: string;
+    endDateTime: string;
+    registrationDeadline: string; // Added field
+    address: string;
+    maxParticipants: number;
+    numRegistrationCurrently: number;
+    approvedParticipants: number;
+    remainingSlots: number;
+    registrationState: string;
+    activityStatus: string;
+    requirements: string;
+    benefitsCtxh: number; // Volunteer Days
+    createdAt: string;
+}
 
 export default function ActivityDetailScreen() {
     const router = useRouter();
     const params = useLocalSearchParams();
+    const { token } = useAuth();
 
-    // Mock data if params are missing (for dev/testing)
-    const activity = {
-        title: params.title || "Teaching Kids Coding",
-        image: params.image || require('../assets/images/ob1.png'), // Fallback image
-        date: params.date || "Oct 25, 2025",
-        time: params.time || "2:00 PM - 5:00 PM",
-        location: params.location || "Community Library",
-        slots: params.slots || "5/15",
-        description: params.description || "Share your coding knowledge with kids aged 8-12! We'll teach basic programming concepts through fun games and interactive activities. Perfect for CS students.",
-        organizer: "Techlead",
+    // Get ID from params (supports 'id' or 'activityId')
+    const activityId = params.id || params.activityId;
+
+    const [activity, setActivity] = React.useState<ActivityDetail | null>(null);
+    const [loading, setLoading] = React.useState(true);
+
+    React.useEffect(() => {
+        const fetchActivityDetail = async () => {
+            if (!activityId || !token) {
+                setLoading(false);
+                return;
+            }
+
+            try {
+                const response = await fetch(`https://marg-astonishing-matthias.ngrok-free.dev/api/v1/activities/${activityId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const json = await response.json();
+
+                if (json.success && json.data) {
+                    setActivity(json.data);
+                } else {
+                    Alert.alert("Error", "Failed to load activity details.");
+                }
+            } catch (error) {
+                console.error("Failed to fetch activity detail:", error);
+                Alert.alert("Error", "Network error.");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchActivityDetail();
+    }, [activityId, token]);
+
+    if (loading) {
+        return (
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <ActivityIndicator size="large" color="#FF4058" />
+            </View>
+        );
+    }
+
+    if (!activity) {
+        return (
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <Text>Activity not found.</Text>
+                <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 20 }}>
+                    <Text style={{ color: '#FF4058' }}>Go Back</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
+
+    const formatFullDateTime = (dateString: string) => {
+        try {
+            const date = new Date(dateString);
+            const d = date.toLocaleDateString('en-GB'); // dd/mm/yyyy
+            const t = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            return `${d}\n${t}`;
+        } catch (e) { return "N/A"; }
     };
+
+    const cleanUrl = activity.imageUrl ? activity.imageUrl.trim() : '';
+    const imageSource = (cleanUrl.startsWith('http')) ? { uri: cleanUrl } : require('../assets/images/alternative.png');
 
     return (
         <View style={styles.container}>
@@ -29,21 +112,38 @@ export default function ActivityDetailScreen() {
                     <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                         <Ionicons name="chevron-back" size={28} color="#000" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle} numberOfLines={1}>{activity.title}</Text>
-                    <TouchableOpacity onPress={() => router.push({ pathname: '/update-activity', params: params })}>
-                        <Text style={styles.editButtonText}>EDIT</Text>
-                    </TouchableOpacity>
+                    <Text style={styles.headerTitle} numberOfLines={1}>{activity.name}</Text>
+                    {params.hideEdit !== 'true' ? (
+                        <TouchableOpacity onPress={() => router.push({
+                            pathname: '/update-activity',
+                            params: {
+                                id: activity.activityId,
+                                title: activity.name,
+                                description: activity.description,
+                            }
+                        })}>
+                            <Text style={styles.editButtonText}>EDIT</Text>
+                        </TouchableOpacity>
+                    ) : (
+                        <View style={{ width: 40 }} />
+                    )}
                 </View>
             </SafeAreaView>
 
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 {/* Banner Image */}
                 <View style={styles.imageContainer}>
-                    <Image source={typeof activity.image === 'string' ? { uri: activity.image } : activity.image} style={styles.bannerImage} />
+                    <Image source={imageSource} style={styles.bannerImage} />
                     <View style={styles.organizerBadge}>
-                        <Text style={styles.organizerText}>Organized by {activity.organizer}</Text>
+                        <Text style={styles.organizerText}>Organized by {activity.organizationName || 'Organization'}</Text>
                     </View>
                 </View>
+
+                {/* Title */}
+                <Text style={styles.title}>{activity.name}</Text>
+                {activity.shortDescription ? (
+                    <Text style={styles.shortDescription}>{activity.shortDescription}</Text>
+                ) : null}
 
                 {/* Tags */}
                 <View style={styles.section}>
@@ -51,15 +151,21 @@ export default function ActivityDetailScreen() {
                     <View style={styles.tagsRow}>
                         <View style={styles.tagItem}>
                             <View style={[styles.tagIcon, { backgroundColor: '#E0F7FA' }]}>
-                                <Ionicons name="school-outline" size={20} color="#00BCD4" />
+                                <Ionicons name="pricetag-outline" size={20} color="#00BCD4" />
                             </View>
-                            <Text style={styles.tagText}>Education</Text>
+                            <Text style={styles.tagText}>{activity.category.replace('_', ' ')}</Text>
                         </View>
                         <View style={styles.tagItem}>
-                            <View style={[styles.tagIcon, { backgroundColor: '#E8F5E9' }]}>
-                                <Ionicons name="checkmark-circle-outline" size={20} color="#4CAF50" />
+                            <View style={[styles.tagIcon, {
+                                backgroundColor: activity.registrationState === 'OPEN' ? '#E8F5E9' : '#FFEBEE'
+                            }]}>
+                                <Ionicons
+                                    name={activity.registrationState === 'OPEN' ? "checkmark-circle-outline" : "close-circle-outline"}
+                                    size={20}
+                                    color={activity.registrationState === 'OPEN' ? "#4CAF50" : "#F44336"}
+                                />
                             </View>
-                            <Text style={styles.tagText}>Active</Text>
+                            <Text style={styles.tagText}>{activity.registrationState}</Text>
                         </View>
                     </View>
                 </View>
@@ -67,43 +173,85 @@ export default function ActivityDetailScreen() {
                 {/* Info Grid */}
                 <View style={styles.gridContainer}>
                     <View style={styles.gridRow}>
+
                         <View style={styles.gridItem}>
                             <View style={styles.gridHeader}>
                                 <View style={[styles.gridIconContainer, { backgroundColor: '#E3F2FD' }]}>
-                                    <Ionicons name="calendar" size={18} color="#2196F3" />
+                                    <Ionicons name="calendar-outline" size={18} color="#2196F3" />
                                 </View>
-                                <Text style={styles.gridLabel}>DATE</Text>
+                                <Text style={styles.gridLabel}>START</Text>
                             </View>
-                            <Text style={styles.gridValue}>{activity.date}</Text>
+                            <Text style={styles.gridValue}>{formatFullDateTime(activity.startDateTime)}</Text>
                         </View>
                         <View style={styles.gridItem}>
                             <View style={styles.gridHeader}>
                                 <View style={[styles.gridIconContainer, { backgroundColor: '#FFF3E0' }]}>
-                                    <Ionicons name="time" size={18} color="#FF9800" />
+                                    <Ionicons name="calendar-outline" size={18} color="#FF9800" />
                                 </View>
-                                <Text style={styles.gridLabel}>TIME</Text>
+                                <Text style={styles.gridLabel}>END</Text>
                             </View>
-                            <Text style={styles.gridValue}>{activity.time}</Text>
+                            <Text style={styles.gridValue}>{formatFullDateTime(activity.endDateTime)}</Text>
                         </View>
                     </View>
+
                     <View style={styles.gridRow}>
                         <View style={styles.gridItem}>
+                            <View style={styles.gridHeader}>
+                                <View style={[styles.gridIconContainer, { backgroundColor: '#FFEBEE' }]}>
+                                    <Ionicons name="alarm-outline" size={18} color="#F44336" />
+                                </View>
+                                <Text style={styles.gridLabel}>DEADLINE</Text>
+                            </View>
+                            <Text style={styles.gridValue}>{formatFullDateTime(activity.registrationDeadline)}</Text>
+                        </View>
+                        <View style={styles.gridItem}>
+                            <View style={styles.gridHeader}>
+                                <View style={[styles.gridIconContainer, { backgroundColor: '#E0F2F1' }]}>
+                                    <Ionicons name="people-outline" size={18} color="#009688" />
+                                </View>
+                                <Text style={styles.gridLabel}>SLOTS LEFT</Text>
+                            </View>
+                            <Text style={styles.gridValue}>{activity.remainingSlots}</Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.gridRow}>
+                        <View style={[styles.gridItem, { width: width - 40 }]}>
                             <View style={styles.gridHeader}>
                                 <View style={[styles.gridIconContainer, { backgroundColor: '#FFEBEE' }]}>
                                     <Ionicons name="location" size={18} color="#F44336" />
                                 </View>
                                 <Text style={styles.gridLabel}>LOCATION</Text>
                             </View>
-                            <Text style={styles.gridValue} numberOfLines={2}>{activity.location}</Text>
+                            <Text style={styles.gridValue} numberOfLines={2}>{activity.address}</Text>
                         </View>
-                        <View style={styles.gridItem}>
-                            <View style={styles.gridHeader}>
-                                <View style={[styles.gridIconContainer, { backgroundColor: '#E8F5E9' }]}>
-                                    <Ionicons name="people" size={18} color="#4CAF50" />
-                                </View>
-                                <Text style={styles.gridLabel}>PARTICIPANTS</Text>
+                    </View>
+                </View>
+
+                {/* Participant Stats */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionLabel}>PARTICIPANT STATISTICS</Text>
+                    <View style={styles.statsContainer}>
+                        <View style={styles.statsRow}>
+                            <View style={styles.statsItem}>
+                                <Text style={styles.statsLabel}>Max Registrations</Text>
+                                <Text style={styles.statsValue}>{activity.maxParticipants * 3}</Text>
                             </View>
-                            <Text style={styles.gridValue}>{activity.slots}</Text>
+                            <View style={styles.statsItem}>
+                                <Text style={styles.statsLabel}>Max Participants</Text>
+                                <Text style={styles.statsValue}>{activity.maxParticipants}</Text>
+                            </View>
+                        </View>
+                        <View style={styles.divider} />
+                        <View style={styles.statsRow}>
+                            <View style={styles.statsItem}>
+                                <Text style={styles.statsLabel}>Registered</Text>
+                                <Text style={[styles.statsValue, { color: '#2196F3' }]}>{activity.numRegistrationCurrently || 0}</Text>
+                            </View>
+                            <View style={styles.statsItem}>
+                                <Text style={styles.statsLabel}>Approved</Text>
+                                <Text style={[styles.statsValue, { color: '#4CAF50' }]}>{activity.approvedParticipants}</Text>
+                            </View>
                         </View>
                     </View>
                 </View>
@@ -112,36 +260,34 @@ export default function ActivityDetailScreen() {
                 <View style={styles.section}>
                     <Text style={styles.sectionLabel}>DETAILS</Text>
                     <View style={styles.detailsBox}>
-                        <Text style={styles.detailsText}>{activity.description}</Text>
+                        <Text style={styles.detailsText}>{activity.description || "No description provided."}</Text>
                     </View>
                 </View>
 
                 {/* Requirements */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionLabel}>REQUIREMENTS</Text>
-                    <View style={styles.detailsBox}>
-                        <Text style={styles.requirementItem}>• Basic programming knowledge</Text>
-                        <Text style={styles.requirementItem}>• Patient and enthusiastic</Text>
-                        <Text style={styles.requirementItem}>• Laptop required</Text>
-                    </View>
-                </View>
+                {
+                    activity.requirements && (
+                        <View style={styles.section}>
+                            <Text style={styles.sectionLabel}>REQUIREMENTS</Text>
+                            <View style={styles.detailsBox}>
+                                <Text style={styles.requirementItem}>{activity.requirements}</Text>
+                            </View>
+                        </View>
+                    )
+                }
 
-                <View style={{ height: 100 }} />
-            </ScrollView>
-
-            {/* Footer */}
-            <View style={styles.footer}>
-                <View style={styles.footerContent}>
+                {/* Volunteer Days Card */}
+                <View style={styles.volunteerCard}>
                     <View>
-                        <Text style={styles.footerLabel}>Volunteer Days</Text>
-                        <Text style={styles.footerValue}>1.0</Text>
+                        <Text style={styles.volunteerLabel}>Volunteer Days</Text>
+                        <Text style={styles.volunteerValue}>{activity.benefitsCtxh || 0}</Text>
                     </View>
-                    <View style={styles.footerIconContainer}>
+                    <View style={styles.volunteerIcon}>
                         <MaterialCommunityIcons name="clock-time-four-outline" size={40} color="#fff" />
                     </View>
                 </View>
-            </View>
-        </View>
+            </ScrollView >
+        </View >
     );
 }
 
@@ -192,10 +338,66 @@ const styles = StyleSheet.create({
     detailsText: { fontSize: 14, color: '#333', lineHeight: 22 },
     requirementItem: { fontSize: 14, color: '#333', lineHeight: 24 },
 
-    // Footer
-    footer: { position: 'absolute', bottom: 20, left: 20, right: 20, backgroundColor: '#FF4058', borderRadius: 16, height: 80, justifyContent: 'center', shadowColor: '#FF4058', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5 },
-    footerContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 25 },
-    footerLabel: { color: '#fff', fontSize: 16, fontWeight: '600' },
-    footerValue: { color: '#fff', fontSize: 32, fontWeight: 'bold' },
-    footerIconContainer: { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' },
+    // Volunteer Card
+    volunteerCard: {
+        marginHorizontal: 20,
+        marginTop: 30,
+        backgroundColor: '#FF4058',
+        borderRadius: 16,
+        padding: 20,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        shadowColor: '#FF4058', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5
+    },
+    volunteerLabel: { color: 'rgba(255,255,255,0.9)', fontSize: 16, fontWeight: '600' },
+    volunteerValue: { color: '#fff', fontSize: 32, fontWeight: 'bold' },
+    volunteerIcon: { width: 50, height: 50, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)', borderRadius: 25 },
+
+    title: {
+        fontSize: 22,
+        fontWeight: 'bold',
+        color: '#222',
+        textAlign: 'center',
+        marginHorizontal: 20,
+        marginTop: 25,
+    },
+    shortDescription: {
+        fontSize: 16,
+        color: '#666',
+        textAlign: 'center',
+        marginHorizontal: 20,
+        marginTop: 8,
+        lineHeight: 22,
+    },
+    statsContainer: {
+        backgroundColor: '#FAFAFA',
+        borderRadius: 12,
+        padding: 15,
+        borderWidth: 1,
+        borderColor: '#eee',
+    },
+    statsRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 5,
+    },
+    statsItem: {
+        flex: 1,
+    },
+    statsLabel: {
+        fontSize: 12,
+        color: '#666',
+        marginBottom: 2,
+    },
+    statsValue: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#333',
+    },
+    divider: {
+        height: 1,
+        backgroundColor: '#eee',
+        marginVertical: 10,
+    }
 });

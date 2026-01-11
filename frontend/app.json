@@ -29,7 +29,8 @@
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "CAMERA",
-        "RECORD_AUDIO"
+        "RECORD_AUDIO",
+        "READ_MEDIA_IMAGES"
       ]
     },
     "web": {
@@ -69,7 +70,14 @@
           "isAccessMediaLocationEnabled": true
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#ffffff"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
