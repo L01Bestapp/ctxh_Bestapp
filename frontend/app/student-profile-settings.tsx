@@ -88,6 +88,11 @@ export default function StudentProfileSettingsScreen() {
                 if (data.dateOfBirth) {
                     setDate(new Date(data.dateOfBirth));
                 }
+
+                // Sync global user context with fetched avatar
+                if (data.avatarUrl) {
+                    updateUser({ avatarUrl: data.avatarUrl });
+                }
             } else {
                 Alert.alert("Error", "Failed to fetch profile data");
             }
@@ -183,9 +188,16 @@ export default function StudentProfileSettingsScreen() {
 
             const json = await response.json();
             if (response.ok && json.success) {
+                let newAvatarUrl = '';
                 if (typeof json.data === 'string' && json.data.startsWith('http')) {
-                    setAvatarUrl(json.data);
-                    updateUser({ avatarUrl: json.data });
+                    newAvatarUrl = json.data;
+                } else if (typeof json.data === 'object' && json.data.avatarUrl) {
+                    newAvatarUrl = json.data.avatarUrl;
+                }
+
+                if (newAvatarUrl) {
+                    setAvatarUrl(newAvatarUrl);
+                    updateUser({ avatarUrl: newAvatarUrl });
                 } else {
                     fetchProfile();
                 }

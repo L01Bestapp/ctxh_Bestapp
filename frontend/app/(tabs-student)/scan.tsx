@@ -174,7 +174,7 @@ export default function StudentScanScreen() {
                 </View>
 
                 {/* Instructions */}
-                <Text style={styles.instructionText}>Show this QR code at check-in</Text>
+                <Text style={styles.instructionText}>Show this QR code at check-in and check-out</Text>
 
                 {/* Warning Box */}
                 <View style={styles.warningBox}>

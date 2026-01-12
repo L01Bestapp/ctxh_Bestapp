@@ -87,6 +87,10 @@ export default function OrgProfileSettingsScreen() {
                 setRepresentativePhoneNumber(data.representativePhoneNumber || '');
                 setBio(data.bio || '');
 
+                // Sync global user context with fetched avatar
+                if (data.avatarUrl) {
+                    updateUser({ avatarUrl: data.avatarUrl });
+                }
             } else {
                 Alert.alert("Error", "Failed to fetch profile data");
             }
@@ -190,10 +194,18 @@ export default function OrgProfileSettingsScreen() {
 
             const json = await response.json();
             if (response.ok && json.success) {
+                let newAvatarUrl = '';
                 if (typeof json.data === 'string' && json.data.startsWith('http')) {
-                    setAvatarUrl(json.data);
-                    updateUser({ avatarUrl: json.data });
+                    newAvatarUrl = json.data;
+                } else if (typeof json.data === 'object' && json.data.avatarUrl) {
+                    newAvatarUrl = json.data.avatarUrl;
+                }
+
+                if (newAvatarUrl) {
+                    setAvatarUrl(newAvatarUrl);
+                    updateUser({ avatarUrl: newAvatarUrl });
                 } else {
+                    // Fallback: re-fetch profile and update context there if possible
                     fetchProfile();
                 }
                 Alert.alert("Success", "Avatar updated successfully!");

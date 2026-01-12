@@ -408,6 +408,12 @@ export default function OrgActivityScreen() {
                     ))}
                 </View>
 
+                {/* Create New Activity Button */}
+                <TouchableOpacity style={styles.createActivityButton} onPress={() => router.push('/create-activity')}>
+                    <Text style={styles.createActivityText}>Create new activity</Text>
+                    <Ionicons name="add-circle-outline" size={24} color="#fff" />
+                </TouchableOpacity>
+
                 {/* Activity List */}
                 <View style={styles.listContainer}>
                     <FlatList
@@ -424,10 +430,7 @@ export default function OrgActivityScreen() {
                 </View>
 
                 {/* Create New Activity Button */}
-                <TouchableOpacity style={styles.createActivityButton} onPress={() => router.push('/create-activity')}>
-                    <Text style={styles.createActivityText}>Create new activity</Text>
-                    <Ionicons name="add-circle-outline" size={24} color="#fff" />
-                </TouchableOpacity>
+
 
             </ScrollView>
         </SafeAreaView>
@@ -659,7 +662,7 @@ const styles = StyleSheet.create({
         paddingVertical: 15,
         borderRadius: 12,
         marginTop: 10,
-        marginBottom: 40,
+        marginBottom: 20,
         shadowColor: "#FF4058",
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,

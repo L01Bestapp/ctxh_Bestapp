@@ -5,26 +5,19 @@ import { useAuth } from '@/context/AuthContext';
 
 export default function HeaderAvatar() {
     const router = useRouter();
-    const { token, user } = useAuth();
-    const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
+    const { token, user, updateUser } = useAuth();
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        if (token && user) {
-            // Sync local state with context immediately to show updates fast
-            if (user.avatarUrl && user.avatarUrl !== avatarUrl) {
-                setAvatarUrl(user.avatarUrl);
-            }
+        // Only fetch if we are logged in but don't have an avatar URL yet
+        // This avoids overwriting a locally-updated avatar with a stale one from the API
+        if (token && user && !user.avatarUrl) {
             fetchAvatar();
         }
-    }, [token, user]);
+    }, [token, user?.avatarUrl]);
 
     const fetchAvatar = async () => {
         try {
-            // Determine endpoint based on role
-            // user.role from AuthContext is usually 'STUDENT', 'ORGANIZATION', 'ADMIN' (uppercase or lowercase?)
-            // The mapTokenToUser usually normalizes it. Let's assume standard values.
-
             const role = user?.role?.toUpperCase();
             let url = '';
 
@@ -33,7 +26,6 @@ export default function HeaderAvatar() {
             } else if (role === 'ORGANIZATION') {
                 url = 'https://marg-astonishing-matthias.ngrok-free.dev/api/v1/organization/profile';
             } else {
-                setLoading(false);
                 return;
             }
 
@@ -44,13 +36,12 @@ export default function HeaderAvatar() {
             });
             const json = await response.json();
 
-            if (json.success && json.data) {
-                setAvatarUrl(json.data.avatarUrl);
+            if (json.success && json.data && json.data.avatarUrl) {
+                // Update the context so everyone gets the new URL
+                updateUser({ avatarUrl: json.data.avatarUrl });
             }
         } catch (error) {
             console.error("HeaderAvatar Fetch Error:", error);
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -69,13 +60,11 @@ export default function HeaderAvatar() {
 
     return (
         <TouchableOpacity onPress={handlePress}>
-            {/* If loading, assume we might have cached avatarUrl from user object as placeholder? 
-                 Actually, just show user.avatarUrl (from token) as fallback while loading fresh one, or default. 
-             */}
             <Image
                 source={
-                    avatarUrl ? { uri: avatarUrl } :
-                        (user?.avatarUrl ? { uri: user.avatarUrl } : defaultImage)
+                    user?.avatarUrl
+                        ? { uri: user.avatarUrl }
+                        : defaultImage
                 }
                 style={styles.avatar}
             />

@@ -46,6 +46,7 @@ export default function CreateActivityScreen() {
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [activeDateField, setActiveDateField] = useState<'start' | 'end' | 'deadline' | null>(null);
     const [date, setDate] = useState(new Date());
+    const [pickerMode, setPickerMode] = useState<'date' | 'time'>('date');
 
     const ACTIVITY_CATEGORIES = [
         'EDUCATION_SUPPORT',
@@ -114,14 +115,20 @@ export default function CreateActivityScreen() {
 
             // 1. Prepare the JSON data part
             // Ensure dates are ISO strings
+            // Helper to format date as "YYYY-MM-DDTHH:mm:ss" (Local Time)
+            const formatForBackend = (date: Date) => {
+                const pad = (n: number) => n.toString().padStart(2, '0');
+                return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+            };
+
             const activityData = {
                 title: activityName,
                 shortDescription: shortDescription || activityName, // Fallback
                 description: description || activityName,
                 category: category,
-                startDateTime: startDateObj.toISOString(),
-                endDateTime: endDateObj.toISOString(),
-                registrationDeadline: deadlineObj.toISOString(),
+                startDateTime: formatForBackend(startDateObj),
+                endDateTime: formatForBackend(endDateObj),
+                registrationDeadline: formatForBackend(deadlineObj),
                 address: location,
                 maxParticipants: parseInt(volunteers),
                 requirements: requirements || "None",
@@ -215,16 +222,27 @@ export default function CreateActivityScreen() {
     const openDatePicker = (field: 'start' | 'end' | 'deadline') => {
         // console.log(`Opening Date Picker for: ${field}`); // Debug log
         setActiveDateField(field);
+        setPickerMode('date');
         setShowDatePicker(true);
     };
 
     const onDateChange = (event: any, selectedDate?: Date) => {
+        if (event.type === 'dismissed') {
+            setShowDatePicker(false);
+            return;
+        }
+
         const currentDate = selectedDate || date;
         setDate(currentDate);
 
         if (Platform.OS === 'android') {
             setShowDatePicker(false);
-            updateDateState(currentDate);
+            if (pickerMode === 'date') {
+                setPickerMode('time');
+                setTimeout(() => setShowDatePicker(true), 100); // Small delay to allow modal to close/reopen
+            } else {
+                updateDateState(currentDate);
+            }
         }
     };
 
@@ -487,20 +505,11 @@ export default function CreateActivityScreen() {
                 showDatePicker && (
                     <DateTimePicker
                         value={date}
-                        mode="date" // Android often cleaner with just date first, handling time is complex without splitting. 
-                        // For now, let's stick to date but maybe default to "End of Day" for deadline? 
-                        // Or just "Now" time? The validation says "must be in future".
-                        // Let's try 'datetime' on Android too, it usually falls back or works.
-                        // Actually, Android native picker is usually one or the other.
-                        // Let's keep 'date' for android but manually set time to 23:59 for deadline, or current time for others?
-                        // Hack: use mode="date" but preserve current time in the object if not modifying time.
-                        // Better: Use 'date' then 'time'. But too complex for this edit.
-                        // Let's rely on user picking a FUTURE DATE (tomorrow+). 
-                        // If they pick TODAY, IT WILL FAIL if time is 00:00.
-                        // FIX: When updating state, if the date is today, set time to now + 1 hour.
+                        mode={pickerMode}
                         display="default"
                         onChange={onDateChange}
                         minimumDate={new Date()}
+                        is24Hour={true}
                     />
                 )
             )}

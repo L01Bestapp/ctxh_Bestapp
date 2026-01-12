@@ -136,14 +136,20 @@ export default function UpdateActivityScreen() {
         try {
             const hasNewImage = image && image !== originalImage;
 
+            // Helper to format date as "YYYY-MM-DDTHH:mm:ss" (Local Time)
+            const formatForBackend = (date: Date) => {
+                const pad = (n: number) => n.toString().padStart(2, '0');
+                return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+            };
+
             const activityData = {
                 name: activityName,
                 shortDescription: shortDescription || description.substring(0, 50),
                 description: description,
                 category: category,
-                startDateTime: startDate.toISOString(),
-                endDateTime: endDate.toISOString(),
-                registrationDeadline: deadline.toISOString(),
+                startDateTime: formatForBackend(startDate),
+                endDateTime: formatForBackend(endDate),
+                registrationDeadline: formatForBackend(deadline),
                 address: location,
                 maxParticipants: parseInt(maxParticipants),
                 requirements: requirements,

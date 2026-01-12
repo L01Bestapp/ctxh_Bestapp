@@ -101,6 +101,7 @@ export default function OrgStatisticsScreen() {
             if (json.success && json.data) {
                 setStats(json.data);
             }
+            console.log(json);
         } catch (error) {
             console.error("Fetch Stats Error:", error);
         }
@@ -262,24 +263,35 @@ export default function OrgStatisticsScreen() {
                                     <ProgressChart
                                         data={{
                                             labels: ["Attendance"],
-                                            data: [stats.participantStats.avgAttendanceRate / 100]
+                                            data: [Math.min(
+                                                (stats.participantStats.avgAttendanceRate > 1
+                                                    ? stats.participantStats.avgAttendanceRate / 100
+                                                    : stats.participantStats.avgAttendanceRate),
+                                                1.0
+                                            )]
                                         }}
                                         width={width - 60}
                                         height={220}
                                         strokeWidth={16}
                                         radius={80}
                                         chartConfig={{
+                                            backgroundColor: "#fff",
                                             backgroundGradientFrom: "#fff",
                                             backgroundGradientTo: "#fff",
-                                            color: (opacity = 1) => `rgba(41, 182, 246, ${opacity})`, // Light Blue #29B6F6
-                                            strokeWidth: 2,
+                                            color: (opacity = 1) => `rgba(41, 182, 246, ${opacity})`,
+                                            labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                                            style: { borderRadius: 16 },
+                                            propsForDots: { r: "6", strokeWidth: "2", stroke: "#ffa726" }
                                         }}
                                         hideLegend={true}
                                     />
-                                    {/* Center Text (Donut Hole) - Absolute Centered */}
+                                    {/* Center Text (Donut Hole) */}
                                     <View style={styles.donutHole}>
                                         <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#29B6F6' }}>
-                                            {stats.participantStats.avgAttendanceRate.toFixed(1)}%
+                                            {/* Display as percentage (e.g. 85.5%) */}
+                                            {stats.participantStats.avgAttendanceRate > 1
+                                                ? stats.participantStats.avgAttendanceRate.toFixed(1)
+                                                : (stats.participantStats.avgAttendanceRate * 100).toFixed(1)}%
                                         </Text>
                                         <Text style={{ fontSize: 12, color: '#78909C', fontWeight: '600' }}>RATE</Text>
                                     </View>
@@ -801,45 +813,36 @@ const styles = StyleSheet.create({
     },
     donutHole: {
         position: 'absolute',
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        backgroundColor: '#fff',
         justifyContent: 'center',
         alignItems: 'center',
-        top: '50%',
-        left: '50%',
-        marginTop: -40,
-        marginLeft: -40,
-        elevation: 4, // Ensure it sits above chart on Android if needed
-        zIndex: 10,
+        width: 160,
+        height: 160,
     },
-    // Custom Legend Styles
     customLegendContainer: {
         flexDirection: 'row',
         justifyContent: 'center',
-        marginTop: 20,
-        gap: 20,
-        width: '100%',
+        marginTop: -20,
+        marginBottom: 10,
     },
     legendItem: {
         flexDirection: 'row',
         alignItems: 'center',
+        marginHorizontal: 15,
     },
     legendDot: {
         width: 10,
         height: 10,
         borderRadius: 5,
-        marginRight: 8,
+        marginRight: 6,
     },
     legendText: {
+        color: '#666',
         fontSize: 12,
-        color: '#555',
-        marginRight: 5,
+        marginRight: 4,
     },
     legendValue: {
-        fontSize: 12,
         fontWeight: 'bold',
         color: '#333',
+        fontSize: 12,
     },
 });

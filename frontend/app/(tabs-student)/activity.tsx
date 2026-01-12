@@ -35,6 +35,7 @@ export default function StudentActivityScreen() {
             });
             const json = await response.json();
             if (json.success && Array.isArray(json.data)) {
+                console.log(json.data);
                 // Map API data to UI structure
                 const mapped = json.data.map((item: any) => ({
                     id: item.enrollmentId.toString(),
@@ -44,7 +45,7 @@ export default function StudentActivityScreen() {
                     time: formatDateTime(item.startDateTime),
                     location: item.address || 'N/A',
                     status: mapStatus(item.enrollmentStatus),
-                    image: require('../../assets/images/alternative.png'), // No image in API yet
+                    image: item.activityImage, // No image in API yet
                     ctxh: `+${item.benefitsCtxh || 0} days`, // Assuming days based on previous
                     statusMessage: getStatusMessage(item.enrollmentStatus),
                     createdAt: item.appliedAt || new Date().toISOString(),
@@ -164,7 +165,11 @@ export default function StudentActivityScreen() {
             <View style={styles.activityCard}>
                 {/* Left Image Section */}
                 <View style={styles.imageContainer}>
-                    <Image source={item.image} style={styles.activityImage} resizeMode="cover" />
+                    <Image
+                        source={item.image ? { uri: item.image } : require('../../assets/images/alternative.png')}
+                        style={styles.activityImage}
+                        resizeMode="cover"
+                    />
                 </View>
 
                 {/* Right Content Section */}
