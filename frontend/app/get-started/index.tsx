@@ -10,14 +10,7 @@ export default function GetStartedScreen() {
     const insets = useSafeAreaInsets();
 
     const handleGetStarted = () => {
-        const role = params.role;
-        if (role === 'org') {
-            // @ts-ignore
-            router.replace('/(tabs-org)/home');
-        } else {
-            // @ts-ignore
-            router.replace('/(tabs-student)/home');
-        }
+        router.replace('/login');
     };
 
     return (

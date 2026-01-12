@@ -36,14 +36,14 @@ export default function OnboardingScreen() {
     const [currentStep, setCurrentStep] = React.useState(0);
 
     const handleSkip = () => {
-        router.replace('/login');
+        router.replace('/get-started');
     };
 
     const handleNext = () => {
         if (currentStep < onboardingSteps.length - 1) {
             setCurrentStep(currentStep + 1);
         } else {
-            router.replace('/signup/role-selection');
+            router.replace('/get-started');
         }
     };
 
@@ -115,7 +115,7 @@ export default function OnboardingScreen() {
 
                     <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
                         <Text style={styles.nextButtonText}>
-                            {currentStep === onboardingSteps.length - 1 ? 'Get Started' : 'Next'}
+                            {currentStep === onboardingSteps.length - 1 ? 'Next' : 'Next'}
                         </Text>
                     </TouchableOpacity>
                 </View>
