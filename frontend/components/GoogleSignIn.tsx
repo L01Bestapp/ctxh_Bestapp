@@ -30,7 +30,7 @@ export default function GoogleSignIn({ style, children, onPress, onSignInSuccess
     if (isNativeModuleAvailable) {
       try {
         GoogleSignin.configure({
-          webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+          webClientId: '903756698510-mm4je49oscmnkjm246t207bg0skuveom.apps.googleusercontent.com',
           scopes: ['profile', 'email'],
         });
       } catch (err) {

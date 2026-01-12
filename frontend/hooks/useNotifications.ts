@@ -132,9 +132,14 @@ export function useNotifications() {
     useEffect(() => {
         const register = async () => {
             if (authToken && user) {
-                const pushToken = await getExpoPushToken();
-                if (pushToken) {
-                    await sendTokenToBackend(authToken);
+                // Ensure permission is granted before getting token
+                // valid even if called multiple times (checks status)
+                const granted = await requestNotificationPermission();
+                if (granted) {
+                    const pushToken = await getExpoPushToken();
+                    if (pushToken) {
+                        await sendTokenToBackend(authToken);
+                    }
                 }
             }
         };

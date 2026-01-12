@@ -1,7 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
-import { removeTokenFromBackend } from '../services/notificationService';
+import { removeTokenFromBackend } from '@/services/notificationService';
 
 interface User {
     // ... (keep interface same)

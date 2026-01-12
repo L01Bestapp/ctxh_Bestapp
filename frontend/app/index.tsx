@@ -12,7 +12,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { StatusBar } from 'expo-status-bar';
 
-import { useAuth } from './context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 
 const { width } = Dimensions.get('window');
 

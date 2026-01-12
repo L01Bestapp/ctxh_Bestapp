@@ -6,7 +6,7 @@ import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, Alert, Dim
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { captureRef } from 'react-native-view-shot';
 
 // Get screen width for responsive sizing

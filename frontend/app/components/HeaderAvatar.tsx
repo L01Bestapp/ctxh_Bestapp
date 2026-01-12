@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Image, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 
 export default function HeaderAvatar() {
     const router = useRouter();

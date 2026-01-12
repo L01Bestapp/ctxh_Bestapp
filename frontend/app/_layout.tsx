@@ -1,10 +1,10 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider } from '@/context/AuthContext';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
-import { useNotifications } from './hooks/useNotifications';
+import { useNotifications } from '@/hooks/useNotifications';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 

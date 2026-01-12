@@ -5,7 +5,7 @@ import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-ico
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import CertificateModal from '../components/CertificateModal';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 
 const { width } = Dimensions.get('window');
 

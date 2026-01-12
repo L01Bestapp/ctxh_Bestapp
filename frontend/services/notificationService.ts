@@ -213,13 +213,14 @@ export async function registerForPushNotificationsAsync() {
 // ============================================
 
 export interface NotificationItem {
-    id: number; // or string, adjust based on backend
+    notificationId: number;
     title: string;
     body: string;
     type: string;
-    data: any;
+    data: any; // Flexible data object
     isRead: boolean;
-    createdAt: string; // ISO string
+    isSent: boolean;
+    createAt: string; // ISO string 2026-01-11T18:58:53.548Z
 }
 
 export async function fetchNotifications(authToken: string): Promise<NotificationItem[]> {
@@ -229,14 +230,8 @@ export async function fetchNotifications(authToken: string): Promise<Notificatio
         });
         if (response.ok) {
             const result = await response.json();
-            if (Array.isArray(result)) {
-                return result;
-            } else if (Array.isArray(result.content)) { // Spring Boot Pageable
-                return result.content;
-            } else if (Array.isArray(result.data)) { // Common wrapper
+            if (result.success && Array.isArray(result.data)) {
                 return result.data;
-            } else if (Array.isArray(result.notifications)) { // Custom wrapper
-                return result.notifications;
             }
             console.warn('Unexpected notification API response structure:', result);
         }
@@ -252,8 +247,10 @@ export async function fetchUnreadCount(authToken: string): Promise<number> {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
         if (response.ok) {
-            const data = await response.json();
-            return data.count || 0; // Adjust based on actual response structure { count: 5 }
+            const result = await response.json();
+            if (result.success && typeof result.data === 'number') {
+                return result.data;
+            }
         }
     } catch (error) {
         console.error('Error fetching unread count:', error);
@@ -261,13 +258,17 @@ export async function fetchUnreadCount(authToken: string): Promise<number> {
     return 0;
 }
 
-export async function markNotificationAsRead(id: number | string, authToken: string): Promise<boolean> {
+export async function markNotificationAsRead(id: number, authToken: string): Promise<boolean> {
     try {
         const response = await fetch(`${API_URL}/notifications/${id}/read`, {
             method: 'PUT',
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
-        return response.ok;
+        if (response.ok) {
+            const result = await response.json();
+            return result.success === true;
+        }
+        return false;
     } catch (error) {
         console.error('Error marking notification as read:', error);
         return false;
@@ -280,7 +281,11 @@ export async function markAllNotificationsAsRead(authToken: string): Promise<boo
             method: 'PUT',
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
-        return response.ok;
+        if (response.ok) {
+            const result = await response.json();
+            return result.success === true;
+        }
+        return false;
     } catch (error) {
         console.error('Error marking all notifications as read:', error);
         return false;

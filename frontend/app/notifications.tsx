@@ -3,14 +3,15 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Act
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useAuth } from './context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import {
     fetchNotifications,
     markAllNotificationsAsRead,
     markNotificationAsRead,
     NotificationItem,
-    setBadgeCount
-} from './services/notificationService';
+    setBadgeCount,
+    fetchUnreadCount
+} from '@/services/notificationService';
 
 type FilterType = 'All' | 'Unread' | 'Read';
 
@@ -27,12 +28,16 @@ export default function NotificationsScreen() {
         setRefreshing(true);
         const data = await fetchNotifications(authToken);
         // Sort by date desc
-        data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        setNotifications(data);
+        if (data && Array.isArray(data)) {
+            data.sort((a, b) => new Date(b.createAt).getTime() - new Date(a.createAt).getTime());
+            setNotifications(data);
 
-        // Update badge count
-        const unread = data.filter(n => !n.isRead).length;
-        setBadgeCount(unread);
+            // Update badge count
+            const unread = data.filter(n => !n.isRead).length;
+            setBadgeCount(unread);
+        } else {
+            setNotifications([]);
+        }
 
         setLoading(false);
         setRefreshing(false);
@@ -42,32 +47,41 @@ export default function NotificationsScreen() {
         loadNotifications();
     }, [loadNotifications]);
 
+    const onRefresh = React.useCallback(() => {
+        setRefreshing(true);
+        loadNotifications().then(() => setRefreshing(false));
+    }, [loadNotifications]);
+
     const handleMarkAllRead = async () => {
-        if (!authToken || notifications.length === 0) return;
-
-        // Optimistic update
-        const previous = [...notifications];
-        setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-
+        if (!authToken) return;
         const success = await markAllNotificationsAsRead(authToken);
-        if (!success) {
-            setNotifications(previous); // Revert if failed
-        } else {
+        if (success) {
+            setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
             setBadgeCount(0);
         }
     };
 
     const handleItemPress = async (item: NotificationItem) => {
-        // Mark as read if not
         if (!item.isRead && authToken) {
-            markNotificationAsRead(item.id, authToken);
-            setNotifications(prev => prev.map(n => n.id === item.id ? { ...n, isRead: true } : n));
-            // Recalculate badge logic if needed (or wait for refresh)
-            // Ideally decrement badge locally
+            // Optimistically update UI
+            setNotifications(prev =>
+                prev.map(n => n.notificationId === item.notificationId ? { ...n, isRead: true } : n)
+            );
+
+            // Call API
+            const success = await markNotificationAsRead(item.notificationId, authToken);
+
+            // Revert if failed (optional, but good practice)
+            if (!success) {
+                // console.log("Failed to mark read");
+            } else {
+                // Update badge count if needed
+                const unread = await fetchUnreadCount(authToken);
+                setBadgeCount(unread);
+            }
         }
 
-        // Navigate based on data
-        // logic similar to useNotifications hook, or just use data directly if backend sends strictly
+        // Handle navigation based on type/data
         if (item.data?.activityId) {
             router.push({
                 pathname: '/activity-detail',
@@ -76,46 +90,52 @@ export default function NotificationsScreen() {
         }
     };
 
+    const getIconForType = (type: string) => {
+        switch (type) {
+            case 'REMINDER': return 'alarm-outline';
+            case 'ATTENDANCE_COMPLETED': return 'checkmark-circle-outline';
+            case 'ENROLLMENT_APPROVED': return 'school-outline';
+            case 'GENERAL': return 'notifications-outline';
+            default: return 'notifications-outline';
+        }
+    };
+
     const filteredNotifications = React.useMemo(() => {
+        if (!notifications) return [];
         if (filter === 'All') return notifications;
         if (filter === 'Unread') return notifications.filter(n => !n.isRead);
         if (filter === 'Read') return notifications.filter(n => n.isRead);
         return notifications;
     }, [notifications, filter]);
 
-    const getIconForType = (type: string) => {
-        switch (type) {
-            case 'REMINDER': return { name: 'alarm', color: '#FF9800' };
-            case 'ATTENDANCE_COMPLETED': return { name: 'checkmark-circle', color: '#4CAF50' };
-            case 'ENROLLMENT_APPROVED': return { name: 'ribbon', color: '#2196F3' };
-            case 'ENROLLMENT_REJECTED': return { name: 'close-circle', color: '#F44336' };
-            case 'ACTIVITY_CANCELLED': return { name: 'alert-circle', color: '#F44336' };
-            default: return { name: 'notifications', color: '#607D8B' };
-        }
-    };
-
-    const renderItem = ({ item }: { item: NotificationItem }) => {
-        const iconData = getIconForType(item.type);
-        return (
-            <TouchableOpacity
-                style={[styles.itemContainer, !item.isRead && styles.unreadItem]}
-                onPress={() => handleItemPress(item)}
-                activeOpacity={0.7}
-            >
-                <View style={[styles.iconContainer, { backgroundColor: iconData.color + '20' }]}>
-                    <Ionicons name={iconData.name as any} size={24} color={iconData.color} />
+    const renderItem = ({ item }: { item: NotificationItem }) => (
+        <TouchableOpacity
+            style={[styles.itemContainer, !item.isRead && styles.unreadItem]}
+            onPress={() => handleItemPress(item)}
+        >
+            <View style={[styles.iconContainer, !item.isRead && styles.unreadIconContainer]}>
+                <Ionicons
+                    name={getIconForType(item.type) as any}
+                    size={24}
+                    color={!item.isRead ? '#2F80ED' : '#888'}
+                />
+            </View>
+            <View style={styles.textContainer}>
+                <View style={styles.topRow}>
+                    <Text style={[styles.title, !item.isRead && styles.unreadText]} numberOfLines={1}>
+                        {item.title}
+                    </Text>
+                    <Text style={styles.time}>
+                        {new Date(item.createAt).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                    </Text>
                 </View>
-                <View style={styles.textContainer}>
-                    <View style={styles.topRow}>
-                        <Text style={[styles.title, !item.isRead && styles.unreadText]}>{item.title}</Text>
-                        <Text style={styles.time}>{new Date(item.createdAt).toLocaleString()}</Text>
-                    </View>
-                    <Text style={styles.message} numberOfLines={2}>{item.body}</Text>
-                </View>
-                {!item.isRead && <View style={styles.unreadDot} />}
-            </TouchableOpacity>
-        );
-    };
+                <Text style={[styles.message, !item.isRead && styles.unreadBody]} numberOfLines={2}>
+                    {item.body}
+                </Text>
+            </View>
+            {!item.isRead && <View style={styles.unreadDot} />}
+        </TouchableOpacity>
+    );
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
@@ -169,7 +189,7 @@ export default function NotificationsScreen() {
                     <FlatList
                         data={filteredNotifications}
                         renderItem={renderItem}
-                        keyExtractor={item => item.id.toString()}
+                        keyExtractor={item => item.notificationId.toString()}
                         contentContainerStyle={styles.listContent}
                         showsVerticalScrollIndicator={false}
                         refreshControl={
@@ -303,6 +323,10 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 15,
+        backgroundColor: '#F5F5F5',
+    },
+    unreadIconContainer: {
+        backgroundColor: '#E3F2FD',
     },
     textContainer: {
         flex: 1,
@@ -331,6 +355,10 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#666',
         lineHeight: 20,
+    },
+    unreadBody: {
+        color: '#333',
+        fontWeight: '500',
     },
     unreadDot: {
         width: 10,

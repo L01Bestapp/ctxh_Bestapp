@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, Image, Dimensions, TouchableOpacity
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { PieChart, LineChart, ProgressChart } from 'react-native-chart-kit';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import HeaderAvatar from '../components/HeaderAvatar';
 import { useFocusEffect, useRouter } from 'expo-router';
 

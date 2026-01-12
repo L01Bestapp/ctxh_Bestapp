@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { NOTIFICATION_SETTINGS } from './services/notificationService';
+import { NOTIFICATION_SETTINGS } from '@/services/notificationService';
 
 export default function NotificationSettingsScreen() {
     const router = useRouter();

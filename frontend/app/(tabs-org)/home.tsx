@@ -25,7 +25,7 @@ interface Activity {
     organizationName: string;
 }
 
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import HeaderAvatar from '../components/HeaderAvatar';
 
 export default function OrgHomeScreen() {
