@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { PieChart, LineChart, ProgressChart } from 'react-native-chart-kit';
 import { useAuth } from '@/context/AuthContext';
 import HeaderAvatar from '../components/HeaderAvatar';
+import NotificationBell from '../components/NotificationBell';
 import { useFocusEffect, useRouter } from 'expo-router';
 
 const { width } = Dimensions.get('window');
@@ -201,9 +202,7 @@ export default function OrgStatisticsScreen() {
         <SafeAreaView style={styles.container} edges={['top']}>
             {/* Header */}
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.push('/notifications')} style={styles.backButton}>
-                    <Ionicons name="notifications-outline" size={24} color="#333" />
-                </TouchableOpacity>
+                <NotificationBell />
                 <Image source={require('../../assets/images/logo_univolun.png')} style={styles.logo} resizeMode="contain" />
                 <HeaderAvatar />
             </View>

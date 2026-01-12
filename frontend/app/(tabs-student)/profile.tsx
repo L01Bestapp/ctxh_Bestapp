@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
+import NotificationBell from '../components/NotificationBell';
 
 interface StudentDetail {
     studentId: number;
@@ -117,9 +118,7 @@ export default function StudentProfileScreen() {
         <SafeAreaView style={styles.container} edges={['top']}>
             {/* Header */}
             <View style={styles.header}>
-                <TouchableOpacity style={styles.menuButton} onPress={() => router.push('/notifications')}>
-                    <Ionicons name="notifications-outline" size={24} color="#333" />
-                </TouchableOpacity>
+                <NotificationBell />
                 <Text style={styles.headerTitle}>MY PROFILE</Text>
                 <View style={{ width: 40 }} />
             </View>

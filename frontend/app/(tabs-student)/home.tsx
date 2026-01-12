@@ -27,6 +27,7 @@ interface Activity {
 
 import { useAuth } from '@/context/AuthContext';
 import HeaderAvatar from '../components/HeaderAvatar';
+import NotificationBell from '../components/NotificationBell';
 
 export default function StudentHomeScreen() {
   const router = useRouter();
@@ -281,9 +282,7 @@ export default function StudentHomeScreen() {
 
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.menuIcon} onPress={() => router.push('/notifications')}>
-            <Ionicons name="notifications-outline" size={28} color="#333" />
-          </TouchableOpacity>
+          <NotificationBell />
           <Image source={require('../../assets/images/logo_univolun.png')} style={styles.headerLogo} resizeMode="contain" />
           <HeaderAvatar />
         </View>

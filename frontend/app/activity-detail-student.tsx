@@ -376,18 +376,42 @@ export default function StudentActivityDetailScreen() {
                 ) : null}
                 <View style={styles.divider} />
                 {isRegistered ? (
-                    <View style={[styles.approvedContainer, enrollmentStatus?.toUpperCase() === 'APPROVED' && { backgroundColor: '#E8F5E9', borderColor: '#4CAF50' }]}>
+                    <View style={[
+                        styles.approvedContainer,
+                        enrollmentStatus?.toUpperCase() === 'APPROVED' && { backgroundColor: '#E8F5E9', borderColor: '#4CAF50' },
+                        enrollmentStatus?.toUpperCase() === 'REJECTED' && { backgroundColor: '#FFEBEE', borderColor: '#EF9A9A' }
+                    ]}>
                         <MaterialCommunityIcons
-                            name={enrollmentStatus?.toUpperCase() === 'APPROVED' ? "check-decagram" : "clock-outline"}
+                            name={
+                                enrollmentStatus?.toUpperCase() === 'APPROVED' ? "check-decagram" :
+                                    enrollmentStatus?.toUpperCase() === 'REJECTED' ? "close-circle-outline" :
+                                        "clock-outline"
+                            }
                             size={24}
-                            color={enrollmentStatus?.toUpperCase() === 'APPROVED' ? "#4CAF50" : "#FFC107"}
+                            color={
+                                enrollmentStatus?.toUpperCase() === 'APPROVED' ? "#4CAF50" :
+                                    enrollmentStatus?.toUpperCase() === 'REJECTED' ? "#F44336" :
+                                        "#FFC107"
+                            }
                         />
                         <View style={{ marginLeft: 10 }}>
-                            <Text style={[styles.approvedTitle, enrollmentStatus?.toUpperCase() !== 'APPROVED' && { color: '#FFA000' }]}>
-                                {enrollmentStatus?.toUpperCase() === 'APPROVED' ? 'Registration Accepted' : 'Registration Submitted'}
+                            <Text style={[
+                                styles.approvedTitle,
+                                enrollmentStatus?.toUpperCase() === 'REJECTED' && { color: '#D32F2F' },
+                                enrollmentStatus?.toUpperCase() !== 'APPROVED' && enrollmentStatus?.toUpperCase() !== 'REJECTED' && { color: '#FFA000' }
+                            ]}>
+                                {enrollmentStatus?.toUpperCase() === 'APPROVED' ? 'Registration Accepted' :
+                                    enrollmentStatus?.toUpperCase() === 'REJECTED' ? 'Registration Rejected' :
+                                        'Registration Submitted'}
                             </Text>
-                            <Text style={[styles.approvedDate, enrollmentStatus?.toUpperCase() !== 'APPROVED' && { color: '#FFB300' }]}>
-                                {enrollmentStatus?.toUpperCase() === 'APPROVED' ? 'You have joined this activity' : 'Waiting for approval'}
+                            <Text style={[
+                                styles.approvedDate,
+                                enrollmentStatus?.toUpperCase() === 'REJECTED' && { color: '#E57373' },
+                                enrollmentStatus?.toUpperCase() !== 'APPROVED' && enrollmentStatus?.toUpperCase() !== 'REJECTED' && { color: '#FFB300' }
+                            ]}>
+                                {enrollmentStatus?.toUpperCase() === 'APPROVED' ? 'You have joined this activity' :
+                                    enrollmentStatus?.toUpperCase() === 'REJECTED' ? 'Your registration was declined' :
+                                        'Waiting for approval'}
                             </Text>
                         </View>
                     </View>

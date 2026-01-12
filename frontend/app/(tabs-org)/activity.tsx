@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import HeaderAvatar from '../components/HeaderAvatar';
+import NotificationBell from '../components/NotificationBell';
 
 // API Interface matching schema for get-all-activity-for-organization
 interface Activity {
@@ -308,9 +309,7 @@ export default function OrgActivityScreen() {
 
                 {/* Header */}
                 <View style={styles.header}>
-                    <TouchableOpacity style={styles.menuIcon} onPress={() => router.push('/notifications')}>
-                        <Ionicons name="notifications-outline" size={28} color="#333" />
-                    </TouchableOpacity>
+                    <NotificationBell />
                     <Image source={require('../../assets/images/logo_univolun.png')} style={styles.headerLogo} resizeMode="contain" />
                     <HeaderAvatar />
                 </View>

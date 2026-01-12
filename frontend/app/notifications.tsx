@@ -12,12 +12,14 @@ import {
     setBadgeCount,
     fetchUnreadCount
 } from '@/services/notificationService';
+import { useNotifications } from '@/hooks/useNotifications';
 
 type FilterType = 'All' | 'Unread' | 'Read';
 
 export default function NotificationsScreen() {
     const router = useRouter();
     const { token: authToken } = useAuth();
+    const { handleNotificationNavigation } = useNotifications(false);
     const [notifications, setNotifications] = React.useState<NotificationItem[]>([]);
     const [loading, setLoading] = React.useState(true);
     const [refreshing, setRefreshing] = React.useState(false);
@@ -61,32 +63,29 @@ export default function NotificationsScreen() {
         }
     };
 
-    const handleItemPress = async (item: NotificationItem) => {
+    const handleItemPress = (item: NotificationItem) => {
+        // 1. Navigation First (Immediate response)
+        if (item.data) {
+            const navData = { ...item.data, type: item.type };
+            // console.log("🔔 [NotificationsScreen] Tapped Item Data (Merged):", JSON.stringify(navData, null, 2));
+            handleNotificationNavigation(navData as any);
+        } else {
+            // console.log("⚠️ [NotificationsScreen] Item has no data payload:", JSON.stringify(item, null, 2));
+        }
+
+        // 2. Mark as read logic (Run in background)
         if (!item.isRead && authToken) {
             // Optimistically update UI
             setNotifications(prev =>
                 prev.map(n => n.notificationId === item.notificationId ? { ...n, isRead: true } : n)
             );
 
-            // Call API
-            const success = await markNotificationAsRead(item.notificationId, authToken);
-
-            // Revert if failed (optional, but good practice)
-            if (!success) {
-                // console.log("Failed to mark read");
-            } else {
-                // Update badge count if needed
-                const unread = await fetchUnreadCount(authToken);
-                setBadgeCount(unread);
-            }
-        }
-
-        // Handle navigation based on type/data
-        if (item.data?.activityId) {
-            router.push({
-                pathname: '/activity-detail',
-                params: { activityId: item.data.activityId }
-            } as any);
+            // Call API in background
+            markNotificationAsRead(item.notificationId, authToken).then(success => {
+                if (success) {
+                    fetchUnreadCount(authToken).then(count => setBadgeCount(count));
+                }
+            });
         }
     };
 

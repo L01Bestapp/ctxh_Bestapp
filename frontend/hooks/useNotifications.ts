@@ -13,14 +13,14 @@ import { useAuth } from '../context/AuthContext';
 
 // Types for backend notification data
 interface NotificationData {
-    type: 'REMINDER' | 'ATTENDANCE_COMPLETED' | 'ENROLLMENT_APPROVED' | 'GENERAL';
+    type: 'REMINDER' | 'ATTENDANCE_COMPLETED' | 'ENROLLMENT_APPROVED' | 'ENROLLMENT_REJECTED' | 'ENROLLMENT_CREATED' | 'ACTIVITY_UPDATED' | 'ACTIVITY_CANCELLED' | 'GENERAL' | string;
     activityId?: string;
     enrollmentId?: string;
     screen?: string; // Fallback for direct navigation
     [key: string]: any;
 }
 
-export function useNotifications() {
+export function useNotifications(shouldInit: boolean = true) {
     const router = useRouter();
     const { token: authToken, user } = useAuth(); // Assuming 'token' is the auth token
 
@@ -31,17 +31,14 @@ export function useNotifications() {
     // ============================================
     // HANDLE FOREGROUND NOTIFICATION
     // ============================================
-    // ============================================
-    // HANDLE FOREGROUND NOTIFICATION
-    // ============================================
     const handleNotificationReceived = useCallback(
         (notification: Notifications.Notification) => {
-            // Log for debugging
-            // console.log('📬 Foreground Notification Received:', notification);
+            // console.log('📬 Foreground Notification:', notification);
 
-            // With "shouldShowAlert: true" in the NotificationHandler (service),
-            // and correct Channel ID from Backend, the system will handle the popup.
-            // No custom scheduling needed here for standard implementation.
+            const data = notification.request.content.data as NotificationData;
+
+            // Update badge or other UI elements here if needed
+            // Currently alert/banner is handled by setNotificationHandler
         },
         []
     );
@@ -55,18 +52,66 @@ export function useNotifications() {
 
             console.log("Navigating from notification data:", data);
 
-            if (data.activityId) {
-                // Route to activity detail
-                // Using as any to bypass strict typing for dynamic IDs
-                router.push({
-                    pathname: '/activity-detail',
-                    params: { activityId: data.activityId }
-                } as any);
-            } else if (data.screen) {
-                router.push(data.screen as any);
-            } else {
-                // Default navigation
-                router.push('/notifications' as any);
+            switch (data.type) {
+                case 'ENROLLMENT_CREATED':
+                    if (data.activityId) {
+                        router.push({
+                            pathname: '/handle-request',
+                            params: { activityId: data.activityId }
+                        } as any);
+                    }
+                    break;
+
+                case 'REMINDER':
+                    if (data.activityId) {
+                        router.push({
+                            pathname: '/activity-detail-student',
+                            params: { activityId: data.activityId }
+                        } as any);
+                    }
+                    break;
+
+                case 'ATTENDANCE_COMPLETED':
+                    if (data.activityId) {
+                        router.push({
+                            pathname: '/history-detail',
+                            params: { activityId: data.activityId }
+                        } as any);
+                    }
+                    break;
+
+                case 'ENROLLMENT_APPROVED':
+                case 'ENROLLMENT_REJECTED':
+                    if (data.activityId) {
+                        router.push({
+                            pathname: '/activity-detail-student',
+                            params: {
+                                id: data.activityId,
+                                activityId: data.activityId,
+                                isRegistered: 'true',
+                                enrollmentStatus: data.type === 'ENROLLMENT_APPROVED' ? 'APPROVED' : 'REJECTED'
+                            }
+                        } as any);
+                    }
+                    break;
+
+                case 'ACTIVITY_UPDATED':
+                case 'ACTIVITY_CANCELLED':
+                case 'GENERAL':
+                default:
+                    if (data.activityId) {
+                        // Default to activity detail if ID is present
+                        router.push({
+                            pathname: '/activity-detail-student',
+                            params: { activityId: data.activityId }
+                        } as any);
+                    } else if (data.screen) {
+                        router.push(data.screen as any);
+                    } else {
+                        // Default navigation
+                        router.push('/notifications' as any);
+                    }
+                    break;
             }
         },
         [router]
@@ -89,6 +134,8 @@ export function useNotifications() {
     // INIT ON MOUNT
     // ============================================
     useEffect(() => {
+        if (!shouldInit) return;
+
         // Configure handler once
         configureNotificationHandler();
 
@@ -151,5 +198,6 @@ export function useNotifications() {
 
     return {
         setBadgeCount,
+        handleNotificationNavigation: navigateFromNotification
     };
 }
