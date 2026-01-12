@@ -31,11 +31,12 @@ export function configureNotificationHandler() {
             const playSound = sound !== 'false';
 
             return {
-                shouldShowAlert: showAlert,
+                shouldShowAlert: true, // Force true to ensure our Local Notification fallback displays
                 shouldPlaySound: playSound,
                 shouldSetBadge: true,
-                shouldShowBanner: showAlert,
-                shouldShowList: showAlert,
+                shouldShowBanner: true, // Expo 50+ property
+                shouldShowList: true,   // Expo 50+ property
+                priority: Notifications.AndroidNotificationPriority.MAX, // Request high priority
             };
         },
     });

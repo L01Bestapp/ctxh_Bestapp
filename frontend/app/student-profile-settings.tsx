@@ -415,6 +415,16 @@ export default function StudentProfileSettingsScreen() {
                         )}
                     </TouchableOpacity>
 
+                    <View style={{ height: 20 }} />
+
+                    <TouchableOpacity
+                        style={styles.testButton}
+                        onPress={() => router.push('/test-notification' as any)}
+                    >
+                        <Ionicons name="notifications-outline" size={20} color="#555" style={{ marginRight: 8 }} />
+                        <Text style={styles.testButtonText}>Test Notifications</Text>
+                    </TouchableOpacity>
+
                     <View style={{ height: 40 }} />
 
                 </ScrollView>
@@ -614,5 +624,21 @@ const styles = StyleSheet.create({
     modalItemText: {
         fontSize: 16,
         color: '#333',
+    },
+    testButton: {
+        flexDirection: 'row',
+        backgroundColor: '#F0F0F0',
+        paddingVertical: 15,
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 10,
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
+    },
+    testButtonText: {
+        color: '#555',
+        fontSize: 16,
+        fontWeight: '600',
     }
 });

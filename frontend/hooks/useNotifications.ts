@@ -31,14 +31,17 @@ export function useNotifications() {
     // ============================================
     // HANDLE FOREGROUND NOTIFICATION
     // ============================================
+    // ============================================
+    // HANDLE FOREGROUND NOTIFICATION
+    // ============================================
     const handleNotificationReceived = useCallback(
         (notification: Notifications.Notification) => {
-            // console.log('📬 Foreground Notification:', notification);
+            // Log for debugging
+            // console.log('📬 Foreground Notification Received:', notification);
 
-            const data = notification.request.content.data as NotificationData;
-
-            // Update badge or other UI elements here if needed
-            // Currently alert/banner is handled by setNotificationHandler
+            // With "shouldShowAlert: true" in the NotificationHandler (service),
+            // and correct Channel ID from Backend, the system will handle the popup.
+            // No custom scheduling needed here for standard implementation.
         },
         []
     );
