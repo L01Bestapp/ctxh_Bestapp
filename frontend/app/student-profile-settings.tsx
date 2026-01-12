@@ -417,13 +417,13 @@ export default function StudentProfileSettingsScreen() {
 
                     <View style={{ height: 20 }} />
 
-                    <TouchableOpacity
+                    {/* <TouchableOpacity
                         style={styles.testButton}
                         onPress={() => router.push('/test-notification' as any)}
                     >
                         <Ionicons name="notifications-outline" size={20} color="#555" style={{ marginRight: 8 }} />
                         <Text style={styles.testButtonText}>Test Notifications</Text>
-                    </TouchableOpacity>
+                    </TouchableOpacity> */}
 
                     <View style={{ height: 40 }} />
 

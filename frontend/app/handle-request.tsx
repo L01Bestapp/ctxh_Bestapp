@@ -319,9 +319,7 @@ export default function HandleRequestScreen() {
                 <Text style={styles.headerTitle} numberOfLines={1}>
                     {params.title || "Handle Request"}
                 </Text>
-                <TouchableOpacity style={styles.headerMore}>
-                    <Ionicons name="ellipsis-horizontal" size={24} color="#333" />
-                </TouchableOpacity>
+                <View style={{ width: 40 }} />
             </View>
 
             {/* Tabs ... */}
