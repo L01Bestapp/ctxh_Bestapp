@@ -5,9 +5,11 @@ import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FontAwesome6, Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function StudentTabLayout() {
   const colorScheme = useColorScheme();
+  const insets = useSafeAreaInsets();
 
   return (
     <Tabs
@@ -29,8 +31,8 @@ export default function StudentTabLayout() {
             shadowRadius: 5,
           },
           default: {
-            height: 70,
-            paddingBottom: 10,
+            height: 65 + (insets.bottom > 0 ? insets.bottom : 5), // Dynamic height adjustment
+            paddingBottom: insets.bottom > 0 ? insets.bottom : 10, // Ensure content is above nav bar
             backgroundColor: '#ffffff', // White background
             borderTopWidth: 0,
             elevation: 8,
@@ -67,7 +69,7 @@ export default function StudentTabLayout() {
               width: 64,
               justifyContent: 'center',
               alignItems: 'center',
-              marginBottom: 30,
+              marginBottom: 30, // Lifted up
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: 0.1,

@@ -5,9 +5,11 @@ import { HapticTab } from '@/components/haptic-tab';
 import { Ionicons, FontAwesome6 } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TabLayout() {
     const colorScheme = useColorScheme();
+    const insets = useSafeAreaInsets();
 
     return (
         <Tabs
@@ -29,8 +31,8 @@ export default function TabLayout() {
                         shadowRadius: 5,
                     },
                     default: {
-                        height: 70,
-                        paddingBottom: 10,
+                        height: 65 + (insets.bottom > 0 ? insets.bottom : 5), // Dynamic height adjustment
+                        paddingBottom: insets.bottom > 0 ? insets.bottom : 10, // Ensure content is above nav bar
                         backgroundColor: '#ffffff', // White background
                         borderTopWidth: 0,
                         elevation: 8,

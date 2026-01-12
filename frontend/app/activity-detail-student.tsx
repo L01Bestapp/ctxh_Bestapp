@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, Dimensions, Alert, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '@/context/AuthContext';
 
@@ -44,6 +44,7 @@ export default function StudentActivityDetailScreen() {
     const router = useRouter();
     const params = useLocalSearchParams();
     const { token } = useAuth();
+    const insets = useSafeAreaInsets();
 
     // Get ID from params (could be passed as id or activityId)
     const activityId = params.id || params.activityId;
@@ -366,7 +367,7 @@ export default function StudentActivityDetailScreen() {
             </ScrollView>
 
             {/* Footer Action */}
-            <View style={styles.footerContainer}>
+            <View style={[styles.footerContainer, { paddingBottom: Math.max(insets.bottom + 10, 30) }]}>
                 {!isRegistered && activity?.registrationState === 'OPEN' && timeLeft !== 'Expired' && timeLeft ? (
                     <View style={{ alignItems: 'center', paddingTop: 10 }}>
                         <Text style={{ color: '#E91E63', fontWeight: 'bold', fontSize: 13 }}>
