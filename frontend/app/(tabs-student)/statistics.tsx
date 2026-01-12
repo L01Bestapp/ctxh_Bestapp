@@ -46,20 +46,20 @@ const ACHIEVEMENTS_DATA = [
         icon: 'medal',
         color: '#FF9800',
     },
-    {
-        id: 2,
-        title: 'Up Rank',
-        subtitle: 'Up to Rank #12',
-        icon: 'trending-up',
-        color: '#4CAF50',
-    },
-    {
-        id: 3,
-        title: '10 days Volunteer',
-        subtitle: 'Volunteered + 10 days',
-        icon: 'calendar-heart',
-        color: '#E91E63',
-    },
+    // {
+    //     id: 2,
+    //     title: 'Up Rank',
+    //     subtitle: 'Up to Rank #12',
+    //     icon: 'trending-up',
+    //     color: '#4CAF50',
+    // },
+    // {
+    //     id: 3,
+    //     title: `days Volunteer`,
+    //     subtitle: 'Volunteered + 10 days',
+    //     icon: 'calendar-heart',
+    //     color: '#E91E63',
+    // },
 ];
 
 export default function StudentStatisticsScreen() {
