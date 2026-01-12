@@ -8,12 +8,14 @@ import {
     sendTokenToBackend,
     getLastNotificationResponse,
     setBadgeCount,
+    markNotificationAsRead,
 } from '../services/notificationService';
 import { useAuth } from '../context/AuthContext';
 
 // Types for backend notification data
 interface NotificationData {
     type: 'REMINDER' | 'ATTENDANCE_COMPLETED' | 'ENROLLMENT_APPROVED' | 'ENROLLMENT_REJECTED' | 'ENROLLMENT_CREATED' | 'ACTIVITY_UPDATED' | 'ACTIVITY_CANCELLED' | 'GENERAL' | string;
+    notificationId?: number | string; // ID from backend to mark as read
     activityId?: string;
     enrollmentId?: string;
     screen?: string; // Fallback for direct navigation
@@ -125,9 +127,16 @@ export function useNotifications(shouldInit: boolean = true) {
             // console.log('👆 User tapped notification:', response);
 
             const data = response.notification.request.content.data as NotificationData;
+
+            // Optimistically Mark as Read if ID exists
+            if (data.notificationId && authToken) {
+                // console.log(`👉 [Notification] Auto-marking #${data.notificationId} as read.`);
+                markNotificationAsRead(Number(data.notificationId), authToken);
+            }
+
             navigateFromNotification(data);
         },
-        [navigateFromNotification]
+        [navigateFromNotification, authToken]
     );
 
     // ============================================
@@ -157,6 +166,11 @@ export function useNotifications(shouldInit: boolean = true) {
             if (response) {
                 console.log('🚀 App launched from notification:', response);
                 const data = response.notification.request.content.data as NotificationData;
+
+                // Optimistically Mark as Read (Killed State)
+                if (data.notificationId && authToken) {
+                    markNotificationAsRead(Number(data.notificationId), authToken);
+                }
 
                 // Small delay to ensure navigation container is ready
                 setTimeout(() => {
