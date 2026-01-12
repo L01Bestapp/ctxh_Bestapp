@@ -5,6 +5,7 @@ import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-ico
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import CertificateModal from '../components/CertificateModal';
+import HistoryModal from '../components/HistoryModal';
 import { useAuth } from '@/context/AuthContext';
 
 const { width } = Dimensions.get('window');
@@ -67,8 +68,10 @@ export default function StudentStatisticsScreen() {
 
     const [modalVisible, setModalVisible] = useState(false);
     const [certificates, setCertificates] = useState<any[]>([]);
+    const [historyData, setHistoryData] = useState<any[]>([]);
     const [studentDetail, setStudentDetail] = useState<any>(null);
     const [refreshing, setRefreshing] = useState(false);
+    const [historyModalVisible, setHistoryModalVisible] = useState(false);
 
     // Fetch data on mount
     React.useEffect(() => {
@@ -113,6 +116,24 @@ export default function StudentStatisticsScreen() {
             }
         } catch (error) {
             console.error("Fetch Certs Error:", error);
+        }
+    };
+
+    const fetchHistory = async () => {
+        try {
+            const response = await fetch(`https://marg-astonishing-matthias.ngrok-free.dev/api/v1/students/participation/history`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'accept': '*/*'
+                }
+            });
+            const json = await response.json();
+            if (json.success) {
+                setHistoryData(json.data);
+                setHistoryModalVisible(true);
+            }
+        } catch (error) {
+            console.error("Fetch History Error:", error);
         }
     };
 
@@ -253,6 +274,19 @@ export default function StudentStatisticsScreen() {
                         </LinearGradient>
                     </TouchableOpacity>
 
+                    {/* View History Button */}
+                    <TouchableOpacity style={[styles.certificateButton, { marginTop: 15 }]} onPress={fetchHistory}>
+                        <LinearGradient
+                            colors={['#4c669f', '#192f6a']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={styles.buttonGradient}
+                        >
+                            <MaterialCommunityIcons name="history" size={24} color="#fff" />
+                            <Text style={styles.certificateButtonText}>View History</Text>
+                        </LinearGradient>
+                    </TouchableOpacity>
+
                     <View style={{ height: 40 }} />
                 </View>
             </ScrollView>
@@ -262,6 +296,20 @@ export default function StudentStatisticsScreen() {
                 visible={modalVisible}
                 onClose={() => setModalVisible(false)}
                 certificates={certificates}
+            />
+
+            {/* History Modal */}
+            <HistoryModal
+                visible={historyModalVisible}
+                onClose={() => setHistoryModalVisible(false)}
+                historyData={historyData}
+                onItemPress={(item) => {
+                    setHistoryModalVisible(false);
+                    router.push({
+                        pathname: '/history-detail',
+                        params: { activityId: item.activityId }
+                    });
+                }}
             />
         </View>
     );
