@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/AuthContext';
+import { Config } from '@/constants/Config';
 
 const { width } = Dimensions.get('window');
 const RECT_SIZE = 250;
@@ -45,7 +46,7 @@ export default function OrgScanScreen() {
     const fetchActivities = async () => {
         if (!token) return;
         try {
-            const url = `https://marg-astonishing-matthias.ngrok-free.dev/api/v1/activities/get-all-activity-for-organization?t=${Date.now()}`;
+            const url = `${Config.API_BASE_URL}/activities/get-all-activity-for-organization?t=${Date.now()}`;
             const response = await fetch(url, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -135,8 +136,8 @@ export default function OrgScanScreen() {
         setScanned(true);
 
         const endpoint = scanMode === 'CHECK_IN'
-            ? 'https://marg-astonishing-matthias.ngrok-free.dev/api/v1/attendance/check-in'
-            : 'https://marg-astonishing-matthias.ngrok-free.dev/api/v1/attendance/check-out';
+            ? `${Config.API_BASE_URL}/attendance/check-in`
+            : `${Config.API_BASE_URL}/attendance/check-out`;
 
         const actionName = scanMode === 'CHECK_IN' ? 'Check-in' : 'Check-out';
 

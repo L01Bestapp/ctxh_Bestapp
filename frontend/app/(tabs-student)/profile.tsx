@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
+import { Config } from '@/constants/Config';
 import NotificationBell from '../components/NotificationBell';
 
 interface StudentDetail {
@@ -39,7 +40,7 @@ export default function StudentProfileScreen() {
 
     const fetchProfile = async () => {
         try {
-            const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/students/my-profile', {
+            const response = await fetch(`${Config.API_BASE_URL}/students/my-profile`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }

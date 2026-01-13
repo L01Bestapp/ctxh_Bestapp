@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
+import { Config } from '@/constants/Config';
 import HeaderAvatar from '../components/HeaderAvatar';
 
 export default function StudentActivityScreen() {
@@ -27,7 +28,7 @@ export default function StudentActivityScreen() {
     const fetchRequests = async () => {
         if (!token) return;
         try {
-            const response = await fetch(`https://marg-astonishing-matthias.ngrok-free.dev/api/v1/enrollments/my-requests?t=${Date.now()}`, {
+            const response = await fetch(`${Config.API_BASE_URL}/enrollments/my-requests?t=${Date.now()}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
@@ -129,7 +130,7 @@ export default function StudentActivityScreen() {
                     style: "destructive",
                     onPress: async () => {
                         try {
-                            const response = await fetch(`https://marg-astonishing-matthias.ngrok-free.dev/api/v1/enrollments/${id}`, {
+                            const response = await fetch(`${Config.API_BASE_URL}/enrollments/${id}`, {
                                 method: 'DELETE',
                                 headers: {
                                     'Authorization': `Bearer ${token}`,

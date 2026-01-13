@@ -1,50 +1,89 @@
-# Welcome to your Expo app 👋
+# UniVolunteer - Mobile Frontend
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+This is the mobile frontend for the **UniVolunteer** platform, built with **React Native** and **Expo**. It provides a robust interface for both Students and Organizations.
 
-## Get started
+## 📱 Features
 
-1. Install dependencies
+### 🔐 Authentication & Security
+*   **Secure Login/Signup:** Support for Email/Password and **Google Sign-In**.
+*   **Role-Based Access:** Distinct interfaces and permissions for Students and Organizations.
+*   **Account Recovery:** Forgot Password flow with OTP verification.
+*   **Centralized Configuration:** Secure API URL management via `Config.ts`.
 
-   ```bash
-   npm install
-   ```
+### 🎓 Student Portal
+*   **Home Dashboard:** 
+    *   View "Upcoming", "Ongoing", and "Ended" activities.
+    *   Filter activities by category (e.g., Education, Environment).
+    *   Sort by Newest/Oldest.
+*   **Activity Details:** 
+    *   View comprehensive info: slots available, deadlines, location, and description.
+    *   **Register** or **Cancel** enrollment.
+*   **My QR:** 
+    *   Generate a personal dynamic QR code for attendance verification.
+*   **Profile & Stats:** 
+    *   Manage personal information and avatar.
+    *   View participations history and accumulated Social Work Days.
 
-2. Start the app
+### 🏢 Organization Portal
+*   **Activity Dashboard:** 
+    *   Manage all created activities.
+    *   **Create Activity:** Form with image upload support (Multipart).
+    *   **Update/Close Activity:** Edit details or end events.
+*   **Volunteer Request Management:** 
+    *   View list of student requests.
+    *   **Approve** or **Reject** volunteers based on slots.
+*   **QR Scanner:** 
+    *   **Check-in Mode:** Scan student QR to mark arrival.
+    *   **Check-out Mode:** Scan to mark departure and record hours.
+*   **Profile Settings:** 
+    *   Update organization details and representative contact info.
 
-   ```bash
-   npx expo start
-   ```
+## 🛠️ Tech Stack
 
-In the output, you'll find options to open the app in a
+*   **Framework:** React Native (Expo SDK 50+)
+*   **Language:** TypeScript
+*   **Routing:** Expo Router
+*   **Styling:** StyleSheet (React Native)
+*   **Camera:** `expo-camera`
+*   **Notifications:** `expo-notifications`
+*   **Maps/Location:** (Future integration)
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## 🚀 Getting Started
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+### Prerequisites
+*   Node.js (v18+)
+*   npm or yarn
 
-## Get a fresh project
+### Installation
 
-When you're ready, run:
+1.  **Install dependencies:**
+    ```bash
+    npm install
+    ```
 
-```bash
-npm run reset-project
-```
+2.  **Configuration:**
+    *   Ideally, create a `.env` file for environment variables (e.g., `EXPO_PUBLIC_API_URL`).
+    *   By default, the app uses the configuration in `@/constants/Config.ts`.
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+3.  **Start the app:**
+    ```bash
+    npx expo start
+    ```
 
-## Learn more
+4.  **Run on Device/Emulator:**
+    *   Press `a` for Android Emulator.
+    *   Press `i` for iOS Simulator.
+    *   Scan the QR code with **Expo Go** on your physical device.
 
-To learn more about developing your project with Expo, look at the following resources:
+## 📁 Project Structure
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+*   `app/`: Main application screens and routing (Expo Router).
+    *   `(tabs-student)`: Main tabs for Student view.
+    *   `(tabs-org)`: Main tabs for Organization view.
+    *   `login/`, `signup/`: Authentication screens.
+*   `components/`: Reusable UI components (Buttons, Cards, Modals).
+*   `constants/`: App constants and Configuration (`Config.ts`).
+*   `context/`: React Context providers (e.g., `AuthContext`).
+*   `services/`: API service calls.
+*   `assets/`: Images, icons, and fonts.
 
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.

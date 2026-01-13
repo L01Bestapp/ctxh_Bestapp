@@ -26,6 +26,7 @@ interface Activity {
 }
 
 import { useAuth } from '@/context/AuthContext';
+import { Config } from '@/constants/Config';
 import HeaderAvatar from '../components/HeaderAvatar';
 import NotificationBell from '../components/NotificationBell';
 
@@ -59,7 +60,7 @@ export default function OrgHomeScreen() {
         if (!token) return;
 
         try {
-            const url = `https://marg-astonishing-matthias.ngrok-free.dev/api/v1/activities?t=${Date.now()}`;
+            const url = `${Config.API_BASE_URL}/activities?t=${Date.now()}`;
             // console.log("ORG_HOME: Fetching activities from:", url);
             const response = await fetch(url, {
                 headers: {

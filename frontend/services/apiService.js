@@ -1,18 +1,14 @@
 // src/services/apiService.js
 import axios from 'axios';
-import API_BASE_URL from '../constants/apiConfig';
+import { Config } from '@/constants/Config';
 
-// Tạo một instance của axios
+// Create axios instance
 const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 10000, // 10 giây
+  baseURL: Config.API_BASE_URL,
+  timeout: 10000, // 10 seconds
 });
 
-// Hàm gọi API test
+// Test API call
 export const getHelloMessage = () => {
-  return apiClient.get('/api/test/hello');
+  return apiClient.get('/test/hello'); // Assuming /api/v1 is in base URL
 };
-
-// Sau này bạn có thể thêm các hàm khác:
-// export const loginUser = (email, password) => { ... }
-// export const getActivities = () => { ... }

@@ -13,9 +13,11 @@ export const NOTIFICATION_SETTINGS = {
     TIPS: '@notif_tips'
 };
 
+import { Config } from '@/constants/Config';
+
 const FCM_TOKEN_KEY = '@fcm_token';
 const FCM_TOKEN_SENT_KEY = '@fcm_token_sent';
-const API_URL = 'https://marg-astonishing-matthias.ngrok-free.dev/api/v1'; // Hardcoded for now based on context
+const API_URL = Config.API_BASE_URL;
 
 // ============================================
 // 1. CONFIGURE NOTIFICATION HANDLER

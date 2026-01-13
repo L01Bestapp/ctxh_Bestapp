@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '@/context/AuthContext';
+import { Config } from '@/constants/Config';
 
 export default function UpdateActivityScreen() {
     const router = useRouter();
@@ -55,7 +56,7 @@ export default function UpdateActivityScreen() {
             if (!activityId || !token) return;
 
             try {
-                const response = await fetch(`https://marg-astonishing-matthias.ngrok-free.dev/api/v1/activities/${activityId}`, {
+                const response = await fetch(`${Config.API_BASE_URL}/activities/${activityId}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 const json = await response.json();
@@ -172,7 +173,7 @@ export default function UpdateActivityScreen() {
                 });
             }
 
-            const response = await fetch(`https://marg-astonishing-matthias.ngrok-free.dev/api/v1/activities/${activityId}`, {
+            const response = await fetch(`${Config.API_BASE_URL}/activities/${activityId}`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${token}`,

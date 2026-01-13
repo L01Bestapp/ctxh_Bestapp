@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
+import { Config } from '@/constants/Config';
 
 export default function TestNotificationScreen() {
     const router = useRouter();
@@ -49,7 +50,7 @@ export default function TestNotificationScreen() {
                 customData: customData || undefined
             };
 
-            const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/notifications/test', {
+            const response = await fetch(`${Config.API_BASE_URL}/notifications/test`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

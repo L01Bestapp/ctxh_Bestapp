@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/context/AuthContext';
+import { Config } from '@/constants/Config';
 
 export default function GoogleStudentIdScreen() {
     const router = useRouter();
@@ -23,7 +24,7 @@ export default function GoogleStudentIdScreen() {
         try {
             // Need to determine endpoint. Assuming update-profile accepts partial updates.
             // If it mimics student-profile-settings, it put to /students/update-profile
-            const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/students/update-profile', {
+            const response = await fetch(`${Config.API_BASE_URL}/students/update-profile`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

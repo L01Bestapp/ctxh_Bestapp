@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
+import { Config } from '@/constants/Config';
 
 const PasswordInput = ({
     label,
@@ -79,7 +80,7 @@ export default function ChangePasswordScreen() {
 
         setLoading(true);
         try {
-            const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/auth/change-password', {
+            const response = await fetch(`${Config.API_BASE_URL}/auth/change-password`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

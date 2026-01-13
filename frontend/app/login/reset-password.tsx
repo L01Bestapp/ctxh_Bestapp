@@ -4,6 +4,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { Config } from '@/constants/Config';
 
 export default function ResetPasswordScreen() {
     const router = useRouter();
@@ -41,7 +42,7 @@ export default function ResetPasswordScreen() {
         setIsLoading(true);
         try {
             // Updated to match API Spec
-            const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/auth/reset-password', {
+            const response = await fetch(`${Config.API_BASE_URL}/auth/reset-password`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

@@ -19,6 +19,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
+import { Config } from '@/constants/Config';
 import * as ImagePicker from 'expo-image-picker';
 
 
@@ -63,7 +64,7 @@ export default function StudentProfileSettingsScreen() {
     const fetchProfile = async () => {
         setLoading(true);
         try {
-            const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/students/my-profile', {
+            const response = await fetch(`${Config.API_BASE_URL}/students/my-profile`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -119,7 +120,7 @@ export default function StudentProfileSettingsScreen() {
                 bio
             };
 
-            const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/students/update-profile', {
+            const response = await fetch(`${Config.API_BASE_URL}/students/update-profile`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -178,7 +179,7 @@ export default function StudentProfileSettingsScreen() {
 
             formData.append('avatar', fileCheck);
 
-            const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/auth/me/image', {
+            const response = await fetch(`${Config.API_BASE_URL}/auth/me/image`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${token}`,

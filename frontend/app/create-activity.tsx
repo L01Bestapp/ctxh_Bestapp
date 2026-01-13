@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { Config } from '@/constants/Config';
 
 export default function CreateActivityScreen() {
     const router = useRouter();
@@ -164,8 +165,7 @@ export default function CreateActivityScreen() {
                 Alert.alert("Error", "Could not identify Organization ID. Please try logging in again.");
                 return;
             }
-
-            const apiURL = `https://marg-astonishing-matthias.ngrok-free.dev/api/v1/activities`;
+            const apiURL = `${Config.API_BASE_URL}/activities`;
             // console.log(">>> CALLING API URL:", apiURL);
 
             const response = await fetch(apiURL, {

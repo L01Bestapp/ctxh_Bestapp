@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Image, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
+import { Config } from '@/constants/Config';
 
 export default function HeaderAvatar() {
     const router = useRouter();
@@ -22,9 +23,9 @@ export default function HeaderAvatar() {
             let url = '';
 
             if (role === 'STUDENT') {
-                url = 'https://marg-astonishing-matthias.ngrok-free.dev/api/v1/students/my-profile';
+                url = `${Config.API_BASE_URL}/students/my-profile`;
             } else if (role === 'ORGANIZATION') {
-                url = 'https://marg-astonishing-matthias.ngrok-free.dev/api/v1/organization/profile';
+                url = `${Config.API_BASE_URL}/organization/profile`;
             } else {
                 return;
             }

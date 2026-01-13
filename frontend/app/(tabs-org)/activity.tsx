@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
+import { Config } from '@/constants/Config';
 import HeaderAvatar from '../components/HeaderAvatar';
 import NotificationBell from '../components/NotificationBell';
 
@@ -54,7 +55,7 @@ export default function OrgActivityScreen() {
         if (!token) return;
 
         try {
-            const url = `https://marg-astonishing-matthias.ngrok-free.dev/api/v1/activities/get-all-activity-for-organization?t=${Date.now()}`;
+            const url = `${Config.API_BASE_URL}/activities/get-all-activity-for-organization?t=${Date.now()}`;
             const response = await fetch(url, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -150,7 +151,7 @@ export default function OrgActivityScreen() {
         if (!token) return;
 
         try {
-            const response = await fetch(`https://marg-astonishing-matthias.ngrok-free.dev/api/v1/activities/${id}/close`, {
+            const response = await fetch(`${Config.API_BASE_URL}/activities/${id}/close`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${token}`,

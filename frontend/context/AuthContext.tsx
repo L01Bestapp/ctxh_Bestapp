@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
 import { removeTokenFromBackend } from '@/services/notificationService';
+import { Config } from '@/constants/Config';
 
 interface User {
     // ... (keep interface same)
@@ -173,7 +174,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             const refreshToken = await AsyncStorage.getItem('refreshToken');
             if (refreshToken) {
                 try {
-                    await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/auth/logout', {
+                    await fetch(`${Config.API_BASE_URL}/auth/logout`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',

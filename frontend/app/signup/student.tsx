@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import GoogleSignIn from '@/components/GoogleSignIn';
 import { useAuth } from '@/context/AuthContext';
+import { Config } from '@/constants/Config';
 
 export default function StudentSignUpScreen() {
     const router = useRouter();
@@ -41,7 +42,7 @@ export default function StudentSignUpScreen() {
     const handleGoogleLogin = async (idToken: string) => {
         try {
             // Call Backend - New Endpoint for Student Signup
-            const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/auth/sign-up-with-google-for-student', {
+            const response = await fetch(`${Config.API_BASE_URL}/auth/sign-up-with-google-for-student`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ idToken })
@@ -130,7 +131,7 @@ export default function StudentSignUpScreen() {
                 phoneNumber: phone
             };
 
-            const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/students/register', {
+            const response = await fetch(`${Config.API_BASE_URL}/students/register`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

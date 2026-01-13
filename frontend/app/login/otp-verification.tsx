@@ -4,6 +4,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { Config } from '@/constants/Config';
 
 export default function OtpVerificationScreen() {
     const router = useRouter();
@@ -74,7 +75,7 @@ export default function OtpVerificationScreen() {
 
         setIsLoading(true);
         try {
-            const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/auth/verify-otp', {
+            const response = await fetch(`${Config.API_BASE_URL}/auth/verify-otp`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

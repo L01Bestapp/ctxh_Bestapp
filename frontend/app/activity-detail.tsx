@@ -4,6 +4,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '@/context/AuthContext';
+import { Config } from '@/constants/Config';
 
 const { width } = Dimensions.get('window');
 
@@ -50,7 +51,7 @@ export default function ActivityDetailScreen() {
             }
 
             try {
-                const response = await fetch(`https://marg-astonishing-matthias.ngrok-free.dev/api/v1/activities/${activityId}`, {
+                const response = await fetch(`${Config.API_BASE_URL}/activities/${activityId}`, {
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'

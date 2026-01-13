@@ -5,6 +5,7 @@ import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/context/AuthContext';
+import { Config } from '@/constants/Config';
 
 export default function HistoryDetailScreen() {
     const router = useRouter();
@@ -13,7 +14,7 @@ export default function HistoryDetailScreen() {
     const { token } = useAuth();
 
     const [detail, setDetail] = useState<any>(null);
-const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         if (activityId) {
@@ -23,7 +24,7 @@ const [loading, setLoading] = useState(true);
 
     const fetchDetail = async () => {
         try {
-            const response = await fetch(`https://marg-astonishing-matthias.ngrok-free.dev/api/v1/students/participation/history-detail?activityId=${activityId}`, {
+            const response = await fetch(`${Config.API_BASE_URL}/students/participation/history-detail?activityId=${activityId}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'accept': '*/*'

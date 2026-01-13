@@ -13,6 +13,7 @@ import Animated, {
 import { StatusBar } from 'expo-status-bar';
 
 import { useAuth } from '@/context/AuthContext';
+import { Config } from '@/constants/Config';
 
 const { width } = Dimensions.get('window');
 
@@ -45,9 +46,9 @@ export default function AppSplashScreen() {
             const role = (user.role as string).toUpperCase();
             let profileEndpoint = '';
             if (role === 'STUDENT') {
-              profileEndpoint = 'https://marg-astonishing-matthias.ngrok-free.dev/api/v1/students/my-profile';
+              profileEndpoint = `${Config.API_BASE_URL}/students/my-profile`;
             } else if (role === 'ORGANIZATION') {
-              profileEndpoint = 'https://marg-astonishing-matthias.ngrok-free.dev/api/v1/organization/my-profile';
+              profileEndpoint = `${Config.API_BASE_URL}/organization/my-profile`;
             }
 
             if (profileEndpoint) {
@@ -66,7 +67,7 @@ export default function AppSplashScreen() {
 
             // SPECIAL QR CHECK FOR STUDENTS (User Requested)
             if (role === 'STUDENT') {
-              const qrResponse = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/students/my-qr', {
+              const qrResponse = await fetch(`${Config.API_BASE_URL}/students/my-qr`, {
                 headers: { 'Authorization': `Bearer ${token}` }
               });
               const qrJson = await qrResponse.json();

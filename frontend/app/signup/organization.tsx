@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import GoogleSignIn from '@/components/GoogleSignIn';
 import { useAuth } from '@/context/AuthContext';
+import { Config } from '@/constants/Config';
 
 export default function OrganizationSignUpScreen() {
     const router = useRouter();
@@ -58,7 +59,7 @@ export default function OrganizationSignUpScreen() {
     const handleGoogleLogin = async (idToken: string) => {
         try {
             // Call Backend
-            const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/auth/google', {
+            const response = await fetch(`${Config.API_BASE_URL}/auth/google`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ idToken })
@@ -142,8 +143,7 @@ export default function OrganizationSignUpScreen() {
                 organizationType: orgType,
                 phoneNumber: phone
             };
-
-            const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/organization/register', {
+            const response = await fetch(`${Config.API_BASE_URL}/organization/register`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -157,14 +157,14 @@ export default function OrganizationSignUpScreen() {
                 const newOrgId = json.data?.organizationId;
                 if (newOrgId !== undefined && newOrgId !== null) {
                     Alert.alert(
-                        "Success",
-                        `Account created! ID: ${newOrgId}\nPlease activate your account manually via API.`,
+                        "Registration Successful",
+                        "Your account has been created successfully!\n\nPlease check your email for verification. You will be able to log in once your account is approved by the admin.",
                         [{ text: "OK", onPress: () => router.replace('/login') }]
                     );
                 } else {
                     Alert.alert(
-                        "Success (No ID Found)",
-                        `Account created but could not find ID.\nResponse: ${JSON.stringify(json.data)}`,
+                        "Registration Successful",
+                        "Your account has been created. Please check your email for verification.",
                         [{ text: "OK", onPress: () => router.replace('/login') }]
                     );
                 }

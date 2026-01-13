@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
+import { Config } from '@/constants/Config';
 import { captureRef } from 'react-native-view-shot';
 
 // Get screen width for responsive sizing
@@ -27,7 +28,7 @@ export default function StudentScanScreen() {
         if (!token) return;
         try {
             setLoading(true);
-            const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/students/my-qr', {
+            const response = await fetch(`${Config.API_BASE_URL}/students/my-qr`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'

@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/context/AuthContext';
+import { Config } from '@/constants/Config';
 
 export default function VerifyEmailScreen() {
     const router = useRouter();
@@ -29,7 +30,7 @@ export default function VerifyEmailScreen() {
 
         setIsLoading(true);
         try {
-            const response = await fetch(`https://marg-astonishing-matthias.ngrok-free.dev/api/v1/auth/resend-verify-email?email=${encodeURIComponent(user.email)}`, {
+            const response = await fetch(`${Config.API_BASE_URL}/auth/resend-verify-email?email=${encodeURIComponent(user.email)}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

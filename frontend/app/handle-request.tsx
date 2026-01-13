@@ -4,6 +4,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/context/AuthContext';
+import { Config } from '@/constants/Config';
 
 interface Enrollment {
     enrollmentId: number;
@@ -58,7 +59,7 @@ export default function HandleRequestScreen() {
     const fetchActivityDetail = async () => {
         if (!activityId || !token) return;
         try {
-            const response = await fetch(`https://marg-astonishing-matthias.ngrok-free.dev/api/v1/activities/${activityId}`, {
+            const response = await fetch(`${Config.API_BASE_URL}/activities/${activityId}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
@@ -80,7 +81,7 @@ export default function HandleRequestScreen() {
         if (!activityId || !token) return;
         try {
             setLoading(true);
-            const response = await fetch(`https://marg-astonishing-matthias.ngrok-free.dev/api/v1/activities/${activityId}/enrollments`, {
+            const response = await fetch(`${Config.API_BASE_URL}/activities/${activityId}/enrollments`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
@@ -164,7 +165,7 @@ export default function HandleRequestScreen() {
                         return;
                     }
                     try {
-                        const url = `https://marg-astonishing-matthias.ngrok-free.dev/api/v1/activities/${activityId}/enrollments/${id}/approve?approvedBy=${user.id}`;
+                        const url = `${Config.API_BASE_URL}/activities/${activityId}/enrollments/${id}/approve?approvedBy=${user.id}`;
                         const response = await fetch(url, {
                             method: 'PUT',
                             headers: {
@@ -202,7 +203,7 @@ export default function HandleRequestScreen() {
                         return;
                     }
                     try {
-                        const url = `https://marg-astonishing-matthias.ngrok-free.dev/api/v1/activities/${activityId}/enrollments/${id}/reject?rejectedBy=${user.id}`;
+                        const url = `${Config.API_BASE_URL}/activities/${activityId}/enrollments/${id}/reject?rejectedBy=${user.id}`;
                         const response = await fetch(url, {
                             method: 'PUT',
                             headers: {

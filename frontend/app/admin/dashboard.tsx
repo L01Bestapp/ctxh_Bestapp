@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Config } from '@/constants/Config';
 
 interface Organization {
     organizationId: number;
@@ -47,6 +48,7 @@ export default function AdminDashboard() {
     const [processingId, setProcessingId] = useState<number | null>(null);
 
     useEffect(() => {
+        // console.log("Admin Dashboard Mounted");
         loadData();
     }, [activeTab]);
 
@@ -89,12 +91,25 @@ export default function AdminDashboard() {
     const fetchOrganizations = async () => {
         setIsLoading(true);
         try {
-            const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/organization', {
+            let url = `${Config.API_BASE_URL}/organization`;
+
+            if (activeTab === 'requests') {
+                // Use specific endpoint for pending requests
+                url = `${Config.API_BASE_URL}/organization/list-pending-org`;
+            }
+
+            const response = await fetch(url, {
                 headers: { 'Authorization': `Bearer ${token}` },
             });
             const json = await response.json();
+
             if (json.success && Array.isArray(json.data)) {
-                setOrganizations(json.data);
+                // Map data to ensure status is set correctly for UI
+                const mappedData = json.data.map((org: any) => ({
+                    ...org,
+                    status: activeTab === 'requests' ? 'PENDING' : (org.status || 'ACTIVE')
+                }));
+                setOrganizations(mappedData);
             } else {
                 setOrganizations([]);
             }
@@ -109,7 +124,7 @@ export default function AdminDashboard() {
     const fetchStudents = async () => {
         setIsLoading(true);
         try {
-            const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/students', {
+            const response = await fetch(`${Config.API_BASE_URL}/students`, {
                 headers: { 'Authorization': `Bearer ${token}` },
             });
             const json = await response.json();
@@ -129,7 +144,7 @@ export default function AdminDashboard() {
     const handleActivateOrg = async (id: number, name: string) => {
         setProcessingId(id);
         try {
-            const response = await fetch(`https://marg-astonishing-matthias.ngrok-free.dev/api/v1/organization/${id}/active`, {
+            const response = await fetch(`${Config.API_BASE_URL}/organization/${id}/active`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -160,7 +175,7 @@ export default function AdminDashboard() {
 
         setProcessingId(userId);
         try {
-            const response = await fetch(`https://marg-astonishing-matthias.ngrok-free.dev/api/v1/auth/ban-user?userId=${userId}`, {
+            const response = await fetch(`${Config.API_BASE_URL}/auth/ban-user?userId=${userId}`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -190,7 +205,7 @@ export default function AdminDashboard() {
 
         setProcessingId(userId);
         try {
-            const response = await fetch(`https://marg-astonishing-matthias.ngrok-free.dev/api/v1/auth/un-ban-user?userId=${userId}`, {
+            const response = await fetch(`${Config.API_BASE_URL}/auth/un-ban-user?userId=${userId}`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,

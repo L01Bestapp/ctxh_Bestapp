@@ -7,6 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import CertificateModal from '../components/CertificateModal';
 import HistoryModal from '../components/HistoryModal';
 import { useAuth } from '@/context/AuthContext';
+import { Config } from '@/constants/Config';
 
 const { width } = Dimensions.get('window');
 
@@ -83,7 +84,7 @@ export default function StudentStatisticsScreen() {
 
     const fetchStudentDetail = async () => {
         try {
-            const response = await fetch(`https://marg-astonishing-matthias.ngrok-free.dev/api/v1/students/my-profile`, {
+            const response = await fetch(`${Config.API_BASE_URL}/students/my-profile`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -105,7 +106,7 @@ export default function StudentStatisticsScreen() {
 
     const fetchCertificates = async () => {
         try {
-            const response = await fetch(`https://marg-astonishing-matthias.ngrok-free.dev/api/v1/students/certificates?studentId=${user?.id}`, {
+            const response = await fetch(`${Config.API_BASE_URL}/students/certificates?studentId=${user?.id}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -121,7 +122,7 @@ export default function StudentStatisticsScreen() {
 
     const fetchHistory = async () => {
         try {
-            const response = await fetch(`https://marg-astonishing-matthias.ngrok-free.dev/api/v1/students/participation/history`, {
+            const response = await fetch(`${Config.API_BASE_URL}/students/participation/history`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'accept': '*/*'

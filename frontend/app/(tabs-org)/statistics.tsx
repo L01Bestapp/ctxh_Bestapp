@@ -8,6 +8,8 @@ import HeaderAvatar from '../components/HeaderAvatar';
 import NotificationBell from '../components/NotificationBell';
 import { useFocusEffect, useRouter } from 'expo-router';
 
+import { Config } from '@/constants/Config';
+
 const { width } = Dimensions.get('window');
 
 interface StatisticsData {
@@ -95,14 +97,13 @@ export default function OrgStatisticsScreen() {
 
     const fetchStatistics = async () => {
         try {
-            const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/organization/statistics', {
+            const response = await fetch(`${Config.API_BASE_URL}/organization/statistics`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const json = await response.json();
             if (json.success && json.data) {
                 setStats(json.data);
             }
-            console.log(json);
         } catch (error) {
             console.error("Fetch Stats Error:", error);
         }
@@ -110,7 +111,7 @@ export default function OrgStatisticsScreen() {
 
     const fetchActivities = async () => {
         try {
-            const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/activities/get-all-activity-for-organization', {
+            const response = await fetch(`${Config.API_BASE_URL}/activities/get-all-activity-for-organization`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const json = await response.json();
@@ -129,7 +130,7 @@ export default function OrgStatisticsScreen() {
     const fetchAttendanceDetails = async (activityId: number) => {
         try {
             setLoadingModal(true);
-            const response = await fetch(`https://marg-astonishing-matthias.ngrok-free.dev/api/v1/activities/${activityId}/attendance/summary`, {
+            const response = await fetch(`${Config.API_BASE_URL}/activities/${activityId}/attendance/summary`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const json = await response.json();

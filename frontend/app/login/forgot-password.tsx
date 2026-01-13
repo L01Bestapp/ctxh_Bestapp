@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { Config } from '@/constants/Config';
 
 export default function ForgotPasswordScreen() {
     const router = useRouter();
@@ -27,7 +28,7 @@ export default function ForgotPasswordScreen() {
         setIsLoading(true);
         try {
             // Note: API uses query param for email according to user instruction
-            const response = await fetch(`https://marg-astonishing-matthias.ngrok-free.dev/api/v1/auth/forgot-password?email=${encodeURIComponent(email)}`, {
+            const response = await fetch(`${Config.API_BASE_URL}/auth/forgot-password?email=${encodeURIComponent(email)}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

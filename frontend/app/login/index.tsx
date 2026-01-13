@@ -7,6 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import GoogleSignIn from '@/components/GoogleSignIn';
+import { Config } from '@/constants/Config';
 
 export default function LoginScreen() {
     const router = useRouter();
@@ -38,7 +39,7 @@ export default function LoginScreen() {
             };
 
             // Use generic auth endpoint
-            const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/auth/login', {
+            const response = await fetch(`${Config.API_BASE_URL}/auth/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -56,7 +57,7 @@ export default function LoginScreen() {
                 try {
                     // Check if Student Account is Disabled (Code 1104 check)
                     if (role === 'STUDENT') {
-                        const checkResponse = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/students', {
+                        const checkResponse = await fetch(`${Config.API_BASE_URL}/students`, {
                             method: 'GET',
                             headers: {
                                 'Authorization': `Bearer ${tempToken}`,
@@ -75,9 +76,9 @@ export default function LoginScreen() {
                     // Check for BAN Status via Profile
                     let profileEndpoint = '';
                     if (role === 'STUDENT') {
-                        profileEndpoint = 'https://marg-astonishing-matthias.ngrok-free.dev/api/v1/students/my-profile';
+                        profileEndpoint = `${Config.API_BASE_URL}/students/my-profile`;
                     } else if (role === 'ORGANIZATION') {
-                        profileEndpoint = 'https://marg-astonishing-matthias.ngrok-free.dev/api/v1/organization/my-profile';
+                        profileEndpoint = `${Config.API_BASE_URL}/organization/my-profile`;
                     }
 
                     if (role === 'STUDENT' || role === 'ORGANIZATION') {
@@ -93,7 +94,7 @@ export default function LoginScreen() {
 
                     // SPECIAL QR CHECK FOR STUDENTS (User Requested)
                     if (role === 'STUDENT') {
-                        const qrResponse = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/students/my-qr', {
+                        const qrResponse = await fetch(`${Config.API_BASE_URL}/students/my-qr`, {
                             headers: { 'Authorization': `Bearer ${tempToken}` }
                         });
                         const qrJson = await qrResponse.json();
@@ -154,7 +155,7 @@ export default function LoginScreen() {
     const handleGoogleLogin = async (idToken: string) => {
         try {
             // Call Backend - New Endpoint for Login
-            const response = await fetch('https://marg-astonishing-matthias.ngrok-free.dev/api/v1/auth/login-with-google', {
+            const response = await fetch(`${Config.API_BASE_URL}/auth/login-with-google`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ idToken })
