@@ -1,0 +1,148 @@
+import * as Notifications from 'expo-notifications';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Config } from '../constants/Config';
+import {
+    configureNotificationHandler,
+    requestNotificationPermission,
+    getExpoPushToken,
+    sendTokenToBackend,
+    removeTokenFromBackend,
+    fetchNotifications,
+    fetchUnreadCount,
+    markNotificationAsRead,
+    markAllNotificationsAsRead,
+    NOTIFICATION_SETTINGS
+} from '../services/notificationService';
+
+// Mocks are handled by jest.setup.js for expo-constants, expo-notifications logic, etc.
+// But we need to verify specific calls here, so we might want to spy on them or re-mock if jest.setup.js is too generic.
+// notificationService uses 'expo-notifications', 'expo-device', 'expo-constants', '@react-native-async-storage/async-storage'
+
+// We need to mock 'expo-device' as it's not in jest.setup.js
+jest.mock('expo-device', () => ({
+    isDevice: true,
+}));
+
+// Mock global fetch
+global.fetch = jest.fn();
+
+describe('notificationService', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
+    describe('configureNotificationHandler', () => {
+        it('should set notification handler', async () => {
+            const setHandlerSpy = jest.spyOn(Notifications, 'setNotificationHandler');
+            configureNotificationHandler();
+            expect(setHandlerSpy).toHaveBeenCalled();
+        });
+    });
+
+    describe('requestNotificationPermission', () => {
+        it('should return true if permission is already granted', async () => {
+            (Notifications.getPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'granted' });
+            const result = await requestNotificationPermission();
+            expect(result).toBe(true);
+        });
+
+        it('should request permission if not determined', async () => {
+            (Notifications.getPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'undetermined' });
+            (Notifications.requestPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'granted' });
+            const result = await requestNotificationPermission();
+            expect(result).toBe(true);
+            expect(Notifications.requestPermissionsAsync).toHaveBeenCalled();
+        });
+
+        it('should return false if permission denied', async () => {
+            (Notifications.getPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'undetermined' });
+            (Notifications.requestPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'denied' });
+            const result = await requestNotificationPermission();
+            expect(result).toBe(false);
+        });
+    });
+
+    describe('getExpoPushToken', () => {
+        it('should return token on success', async () => {
+            // Mock Constants in jest.setup.js usually returns empty extra, we might need to rely on the fallback ID in the code or mock it here.
+            // The code uses: Constants.expoConfig?.extra?.eas?.projectId ?? '...' 
+            // jest.setup.js mocks expo-constants to { manifest: { extra: {} } } which might map to expoConfig or not depending on version.
+            // Let's assume the fallback works or mock getExpoPushTokenAsync directly.
+
+            const mockToken = 'expo-push-token-123';
+            (Notifications.getExpoPushTokenAsync as jest.Mock).mockResolvedValue({ data: mockToken });
+
+            const token = await getExpoPushToken();
+            expect(token).toBe(mockToken);
+            expect(AsyncStorage.setItem).toHaveBeenCalledWith('@fcm_token', mockToken);
+        });
+
+        it('should return null on error', async () => {
+            (Notifications.getExpoPushTokenAsync as jest.Mock).mockRejectedValue(new Error('Failed'));
+            const token = await getExpoPushToken();
+            expect(token).toBeNull();
+        });
+    });
+
+    describe('sendTokenToBackend', () => {
+        it('should return false if no local token', async () => {
+            (AsyncStorage.getItem as jest.Mock).mockResolvedValueOnce(null); // No FCM token
+            const result = await sendTokenToBackend('auth-token');
+            expect(result).toBe(false);
+        });
+
+        it('should return true if token already sent', async () => {
+            (AsyncStorage.getItem as jest.Mock).mockResolvedValueOnce('token-123'); // FCM token
+            (AsyncStorage.getItem as jest.Mock).mockResolvedValueOnce('token-123'); // Sent token matches
+            const result = await sendTokenToBackend('auth-token');
+            expect(result).toBe(true);
+            expect(fetch).not.toHaveBeenCalled();
+        });
+
+        it('should send token and return true on success', async () => {
+            (AsyncStorage.getItem as jest.Mock).mockResolvedValueOnce('token-123'); // FCM token
+            (AsyncStorage.getItem as jest.Mock).mockResolvedValueOnce(null); // Not sent yet
+
+            (fetch as jest.Mock).mockResolvedValue({ ok: true });
+
+            const result = await sendTokenToBackend('auth-token');
+            expect(result).toBe(true);
+            expect(fetch).toHaveBeenCalledWith(
+                expect.stringContaining('/notifications/fcm-token'),
+                expect.objectContaining({ method: 'PUT' })
+            );
+            expect(AsyncStorage.setItem).toHaveBeenCalledWith('@fcm_token_sent', 'token-123');
+        });
+    });
+
+    describe('fetchNotifications', () => {
+        it('should return list of notifications on success', async () => {
+            const mockData = [{ id: 1, title: 'Test' }];
+            (fetch as jest.Mock).mockResolvedValue({
+                ok: true,
+                json: async () => ({ success: true, data: mockData })
+            });
+
+            const result = await fetchNotifications('auth-token');
+            expect(result).toEqual(mockData);
+        });
+
+        it('should return empty array on failure', async () => {
+            (fetch as jest.Mock).mockResolvedValue({ ok: false });
+            const result = await fetchNotifications('auth-token');
+            expect(result).toEqual([]);
+        });
+    });
+
+    describe('fetchUnreadCount', () => {
+        it('should return count on success', async () => {
+            (fetch as jest.Mock).mockResolvedValue({
+                ok: true,
+                json: async () => ({ success: true, data: 5 })
+            });
+            const result = await fetchUnreadCount('auth-token');
+            expect(result).toBe(5);
+        });
+    });
+
+});

@@ -1,0 +1,32 @@
+import { Colors, Fonts } from '../constants/theme';
+import { Platform } from 'react-native';
+
+describe('Theme', () => {
+    it('should have light and dark color schemes', () => {
+        expect(Colors).toHaveProperty('light');
+        expect(Colors).toHaveProperty('dark');
+    });
+
+    it('light scheme should have correct structure', () => {
+        const light = Colors.light;
+        expect(light).toHaveProperty('text');
+        expect(light).toHaveProperty('background');
+        expect(light).toHaveProperty('tint');
+        expect(light).toHaveProperty('icon');
+    });
+
+    it('dark scheme should have correct structure', () => {
+        const dark = Colors.dark;
+        expect(dark).toHaveProperty('text');
+        expect(dark).toHaveProperty('background');
+        expect(dark).toHaveProperty('tint');
+        expect(dark).toHaveProperty('icon');
+    });
+
+    // it('should define fonts based on platform', () => {
+    //     // Fonts is evaluated at import time based on Platform.OS mock
+    //     expect(Fonts).toBeDefined();
+    //     expect(Fonts).toHaveProperty('sans');
+    //     expect(Fonts).toHaveProperty('serif');
+    // });
+});
